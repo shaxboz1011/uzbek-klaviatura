@@ -64,6 +64,7 @@ class KeyboardView(context: Context) : View(context) {
     private var enterLabel: String? = null
     private var haptic = true
     private var heightScale = 1f
+    private var keyPreview = true
     private var bottomInset = 0
     private var rows: List<List<KeySpec>> = emptyList()
     private val keys = ArrayList<KeyRect>()
@@ -158,8 +159,12 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    fun applyPrefs(haptic: Boolean, heightPercent: Int) {
+    fun applyPrefs(haptic: Boolean, heightPercent: Int, keyPreview: Boolean = true) {
         this.haptic = haptic
+        if (this.keyPreview != keyPreview) {
+            this.keyPreview = keyPreview
+            invalidate()
+        }
         val hs = heightPercent / 100f
         if (hs != heightScale) {
             heightScale = hs
@@ -212,7 +217,7 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val n = rows.size.coerceAtLeast(4)
-        val h = (n * dp(50f) * heightScale + dp(10f) + bottomInset).toInt()
+        val h = (n * dp(52f) * heightScale + dp(10f) + bottomInset).toInt()
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), h)
     }
 
@@ -341,7 +346,7 @@ class KeyboardView(context: Context) : View(context) {
                 "@space" -> {
                     paintText.color = colText
                     paintText.textSize = rowH * 0.28f
-                    drawCentered(c, pack?.name ?: "", cx, cy, paintText)
+                    drawCentered(c, fitText(spaceLabel(), tmp.width() - dp(16f), rowH), cx, cy, paintText)
                 }
                 else -> {
                     val t = if (shift != 0 && !symbols) lbl.uppercase(caseLocale) else lbl
@@ -355,6 +360,27 @@ class KeyboardView(context: Context) : View(context) {
                         c.drawText(hint, tmp.right - dp(4f), tmp.top + rowH * 0.26f, paintHint)
                     }
                 }
+            }
+        }
+
+        // Tugma ustida chiqadigan harf (Samsung kabi)
+        if (keyPreview) {
+            for (i in 0 until ptrs.size()) {
+                val p = ptrs.valueAt(i)
+                val k = p.key ?: continue
+                if (p.alts != null || k.spec.isToken || k.row == 0) continue
+                val t = if (shift != 0 && !symbols) k.spec.label.uppercase(caseLocale) else k.spec.label
+                val r = k.rect
+                val bw = maxOf(r.width(), dp(48f))
+                val bh = r.height() * 1.1f
+                val left = (r.centerX() - bw / 2f).coerceIn(0f, width - bw)
+                val top = r.top - bh - dp(2f)
+                tmp.set(left, top, left + bw, top + bh)
+                paintKey.color = colPopup
+                c.drawRoundRect(tmp, radius, radius, paintKey)
+                paintText.color = colText
+                paintText.textSize = bh * 0.5f
+                drawCentered(c, t, tmp.centerX(), tmp.centerY(), paintText)
             }
         }
 
@@ -379,6 +405,30 @@ class KeyboardView(context: Context) : View(context) {
                 paintText.textSize = p.stripH * 0.4f
                 drawCentered(c, a[j], l + p.cellW / 2f, p.stripTop + p.stripH / 2f, paintText)
             }
+        }
+    }
+
+    private fun spaceLabel(): String = pack?.name ?: ""
+
+    /** Matn tugmaga sigʻmasa — avval kichraytiradi, keyin qisqa nomga oʻtadi, oxirida "…" bilan kesadi. */
+    private fun fitText(t: String, maxW: Float, rowH: Float): String {
+        if (maxW <= 0f) return ""
+        val minSize = rowH * 0.2f
+        var text = t
+        while (true) {
+            while (paintText.textSize > minSize && paintText.measureText(text) > maxW) {
+                paintText.textSize -= dp(0.5f)
+            }
+            if (paintText.measureText(text) <= maxW) return text
+            val short = pack?.short
+            if (short != null && text != short) {
+                text = short
+                paintText.textSize = rowH * 0.28f
+                continue
+            }
+            var n = text.length
+            while (n > 1 && paintText.measureText(text.substring(0, n) + "…") > maxW) n--
+            return text.substring(0, n) + "…"
         }
     }
 

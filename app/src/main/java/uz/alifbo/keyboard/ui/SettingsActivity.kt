@@ -93,6 +93,11 @@ class SettingsActivity : Activity() {
             setOnCheckedChangeListener { _, on -> prefs.haptic = on }
         })
         root.addView(CheckBox(this).apply {
+            text = "Tugma bosilganda harfni tepada koʻrsatish"
+            isChecked = prefs.keyPreview
+            setOnCheckedChangeListener { _, on -> prefs.keyPreview = on }
+        })
+        root.addView(CheckBox(this).apply {
             text = "Doimiy raqamlar qatori"
             isChecked = prefs.numberRow
             setOnCheckedChangeListener { _, on -> prefs.numberRow = on }

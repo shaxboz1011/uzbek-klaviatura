@@ -51,6 +51,13 @@ class Prefs(context: Context) {
             sp.edit().putBoolean("haptic", v).apply()
         }
 
+    /** Tugma bosilganda tepasida harf chiqishi (Samsung kabi). */
+    var keyPreview: Boolean
+        get() = sp.getBoolean("keyPreview", true)
+        set(v) {
+            sp.edit().putBoolean("keyPreview", v).apply()
+        }
+
     /** Klaviatura balandligi, foizda (80..130). */
     var heightPercent: Int
         get() = sp.getInt("height", 100).coerceIn(80, 130)

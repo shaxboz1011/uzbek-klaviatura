@@ -91,7 +91,7 @@ class KeyboardService : InputMethodService(),
         val r = root ?: return
         r.showPanel(KeyboardRoot.KEYBOARD)
         val v = r.keyboard
-        v.applyPrefs(prefs.haptic, prefs.heightPercent)
+        v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview)
         v.setNumberRow(prefs.numberRow)
         v.setOneHanded(prefs.oneHanded)
         r.strip.setOneHandMode(prefs.oneHanded)
