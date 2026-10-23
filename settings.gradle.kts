@@ -13,7 +13,7 @@ dependencyResolutionManagement {
         // Tesseract4Android (kirill yozuvini oʻqish uchun) JitPack orqali tarqatiladi.
         maven {
             url = uri("https://jitpack.io")
-            content { includeGroup("com.github.adaptech-cz") }
+            content { includeGroup("com.github.adaptech-cz.Tesseract4Android") }
         }
     }
 }
