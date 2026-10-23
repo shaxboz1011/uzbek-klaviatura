@@ -33,6 +33,10 @@ android {
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
+        // Faqat telefonlar uchun (x86 emulyator kutubxonalari APK ni kattalashtirmasligi uchun chiqarib tashlandi).
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
         buildConfigField("String", "REGISTRY_URL", "\"$registryUrl\"")
         buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
     }
@@ -82,4 +86,12 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.activity:activity-ktx:1.9.3")
+
+    // Kameradan matn oʻqish: CameraX + ML Kit (telefonning oʻzida, internetsiz).
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:text-recognition:16.0.1")
 }

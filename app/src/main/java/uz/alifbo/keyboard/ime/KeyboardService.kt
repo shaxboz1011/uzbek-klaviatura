@@ -18,6 +18,7 @@ import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
 import uz.alifbo.keyboard.data.RemoteSync
+import uz.alifbo.keyboard.ui.ScanActivity
 import uz.alifbo.keyboard.ui.SettingsActivity
 import uz.alifbo.keyboard.ui.VoiceActivity
 import uz.alifbo.keyboard.ui.VoiceBridge
@@ -162,7 +163,7 @@ class KeyboardService : InputMethodService(),
         v.setEnterLabel(enterLabelFor(info))
         updateShift()
 
-        // Ovozli kiritishdan qaytgan matn
+        // Ovozli kiritish / skanerdan qaytgan matn
         val voice = VoiceBridge.pending
         if (voice != null) {
             VoiceBridge.pending = null
@@ -303,6 +304,11 @@ class KeyboardService : InputMethodService(),
                 r.showPanel(KeyboardRoot.CLIP)
             }
             StripView.VOICE -> startVoice()
+            StripView.SCAN -> startActivity(
+                Intent(this, ScanActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra("pack", prefs.currentId)
+            )
             StripView.SETTINGS -> openSettings()
             StripView.MORE -> {
                 r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
