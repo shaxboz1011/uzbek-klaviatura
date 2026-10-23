@@ -36,6 +36,8 @@ import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import uz.alifbo.keyboard.data.AlphabetTools
+import uz.alifbo.keyboard.data.Prefs
+import uz.alifbo.keyboard.data.Translator
 
 /**
  * Kameradan (yoki galereyadan) matnni oʻqish. Hammasi telefonning oʻzida bajariladi — rasm internetga chiqmaydi.
@@ -66,6 +68,8 @@ class ScanActivity : ComponentActivity() {
     private var rawBlocks: List<String> = emptyList()
     private var alphabet = 0 // 0 - asl, 1 - 1995 (oʻ, gʻ), 2 - yangi (ö, ğ, ş, ç)
     private var paragraphs = true
+    private var packTag = ""
+    private var translated = false
 
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) recognizeUri(uri)
@@ -76,7 +80,8 @@ class ScanActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        alphabet = when (intent.getStringExtra("pack")) {
+        packTag = intent.getStringExtra("pack") ?: ""
+        alphabet = when (packTag) {
             "uz-latn-2026" -> 2
             "uz-latn-1995" -> 1
             else -> 0
@@ -185,9 +190,10 @@ class ScanActivity : ComponentActivity() {
         resultLayer.addView(row2)
 
         val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        actions.addView(pill("Qayta", false) { showCamera() }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { setMargins(0, dp(10), dp(4), 0) })
-        actions.addView(pill("Nusxa", false) { copy() }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { setMargins(dp(4), dp(10), dp(4), 0) })
-        actions.addView(pill("Qoʻyish", true) { insert() }, LinearLayout.LayoutParams(0, dp(46), 1.4f).apply { setMargins(dp(4), dp(10), 0, 0) })
+        actions.addView(pill("Qayta", false) { showCamera() }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { setMargins(0, dp(10), dp(3), 0) })
+        actions.addView(pill("Nusxa", false) { copy() }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { setMargins(dp(3), dp(10), dp(3), 0) })
+        actions.addView(pill("Tarjima", false) { chooseTranslation() }, LinearLayout.LayoutParams(0, dp(46), 1.1f).apply { setMargins(dp(3), dp(10), dp(3), 0) })
+        actions.addView(pill("Qoʻyish", true) { insert() }, LinearLayout.LayoutParams(0, dp(46), 1.3f).apply { setMargins(dp(3), dp(10), 0, 0) })
         resultLayer.addView(actions)
         root.addView(resultLayer, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
@@ -322,6 +328,55 @@ class ScanActivity : ComponentActivity() {
         cameraLayer.visibility = View.GONE
         resultLayer.visibility = View.VISIBLE
         refreshResult()
+    }
+
+    // ---------------------------------------------------------------- tarjima
+
+    private fun sourceLang(): String = when {
+        packTag.startsWith("ru") -> "ru"
+        packTag.startsWith("en") -> "en"
+        packTag.startsWith("tr") -> "tr"
+        else -> "uz"
+    }
+
+    private fun chooseTranslation() {
+        val text = resultText.text.toString()
+        if (text.isBlank()) return
+        val prefs = Prefs(this)
+        if (!prefs.translateConsent) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Tarjima")
+                .setMessage("Tarjima uchun matn tashqi xizmatga (mymemory.translated.net) yuboriladi. Davom etasizmi?")
+                .setPositiveButton("Roziman") { _, _ ->
+                    prefs.translateConsent = true
+                    chooseTranslation()
+                }
+                .setNegativeButton("Bekor", null)
+                .show()
+            return
+        }
+        val langs = Translator.LANGS
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Qaysi tilga?")
+            .setItems(langs.map { it.name }.toTypedArray()) { _, i ->
+                val to = langs[i].code
+                prefs.translateTo = to
+                runTranslation(text, sourceLang(), to)
+            }
+            .show()
+    }
+
+    private fun runTranslation(text: String, from: String, to: String) {
+        busy.visibility = View.VISIBLE
+        Translator.translate(text, from, to) { out, err ->
+            busy.visibility = View.GONE
+            if (out != null) {
+                translated = true
+                resultText.setText(out)
+            } else {
+                Toast.makeText(this, err ?: "Tarjima qilib boʻlmadi", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun refreshResult() {
