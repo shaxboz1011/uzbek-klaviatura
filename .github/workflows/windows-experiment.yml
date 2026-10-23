@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  probe:
+  info:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +36,11 @@ jobs:
           Get-ChildItem "C:\Program Files (x86)\Windows Kits\10" -Directory | Select-Object Name
           Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Extensions" -ErrorAction SilentlyContinue | Select-Object Name
 
+  msklc:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
       - name: Try MSKLC via choco
         shell: pwsh
         timeout-minutes: 3
