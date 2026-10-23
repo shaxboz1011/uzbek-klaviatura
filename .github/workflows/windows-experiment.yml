@@ -9,6 +9,7 @@ on:
 jobs:
   probe:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +38,7 @@ jobs:
 
       - name: Try MSKLC via choco
         shell: pwsh
+        timeout-minutes: 3
         continue-on-error: true
         run: |
           choco install msklc -y --no-progress 2>&1 | Select-Object -Last 25
