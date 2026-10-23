@@ -71,7 +71,7 @@ jobs:
         run: |
           gradle :app:assembleRelease --no-daemon \
             -PversionName=${{ steps.v.outputs.version }} \
-            -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json
+            -PgithubRepo=${{ github.repository }} -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json
           cp app/build/outputs/apk/release/*.apk "Alifbo-v${{ steps.v.outputs.version }}.apk"
 
       - name: GitHub Release

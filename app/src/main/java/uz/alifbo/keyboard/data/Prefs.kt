@@ -58,6 +58,27 @@ class Prefs(context: Context) {
             sp.edit().putBoolean("keyPreview", v).apply()
         }
 
+    /** GitHub'da yangi versiya borligini avtomatik tekshirish. */
+    var autoUpdateCheck: Boolean
+        get() = sp.getBoolean("autoUpdate", true)
+        set(v) {
+            sp.edit().putBoolean("autoUpdate", v).apply()
+        }
+
+    /** Topilgan yangi versiya (boʻsh — yoʻq). */
+    var updateVersion: String
+        get() = sp.getString("updVer", "") ?: ""
+        set(v) {
+            sp.edit().putString("updVer", v).apply()
+        }
+
+    /** Bildirishnoma yuborilgan oxirgi versiya. */
+    var notifiedVersion: String
+        get() = sp.getString("updNotified", "") ?: ""
+        set(v) {
+            sp.edit().putString("updNotified", v).apply()
+        }
+
     /** Surib yozish (swipe). */
     var swipe: Boolean
         get() = sp.getBoolean("swipe", true)
