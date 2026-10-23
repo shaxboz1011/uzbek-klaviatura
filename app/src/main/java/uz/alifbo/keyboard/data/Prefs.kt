@@ -168,6 +168,73 @@ class Prefs(context: Context) {
             sp.edit().putString("emojiRecents", v.joinToString(" ")).apply()
         }
 
+    // ---- koʻrinish va xatti-harakatni sozlash ----
+
+    /** Tugma burchaklari radiusi, dp (0..18). */
+    var keyRadius: Int
+        get() = sp.getInt("keyRadius", 9).coerceIn(0, 18)
+        set(v) { sp.edit().putInt("keyRadius", v).apply() }
+
+    /** Tugmalar orasidagi masofa (har tomondan), dp x2 (1..6). */
+    var keyGap: Int
+        get() = sp.getInt("keyGap", 3).coerceIn(1, 6)
+        set(v) { sp.edit().putInt("keyGap", v).apply() }
+
+    /** Harf oʻlchami, foizda (80..130). */
+    var textScale: Int
+        get() = sp.getInt("textScale", 100).coerceIn(80, 130)
+        set(v) { sp.edit().putInt("textScale", v).apply() }
+
+    /** Tugma ostidagi soya. */
+    var keyShadow: Boolean
+        get() = sp.getBoolean("keyShadow", true)
+        set(v) { sp.edit().putBoolean("keyShadow", v).apply() }
+
+    /** Pastdan qoʻshimcha boʻsh joy, dp (0..32) — katta telefonda bosh barmoq uchun qulay. */
+    var bottomPad: Int
+        get() = sp.getInt("bottomPad", 0).coerceIn(0, 32)
+        set(v) { sp.edit().putInt("bottomPad", v).apply() }
+
+    /** Tebranish kuchi, ms (0 — tizim standarti, 5..40). */
+    var hapticMs: Int
+        get() = sp.getInt("hapticMs", 0).coerceIn(0, 40)
+        set(v) { sp.edit().putInt("hapticMs", v).apply() }
+
+    /** Uzoq bosish kechikishi, ms (150..600). */
+    var longPressMs: Int
+        get() = sp.getInt("longPressMs", 380).coerceIn(150, 600)
+        set(v) { sp.edit().putInt("longPressMs", v).apply() }
+
+    /** Boʻsh joy ustida surib kursorni siljitish qadami, dp (8..32): kichik — sezgir. */
+    var cursorStep: Int
+        get() = sp.getInt("cursorStep", 16).coerceIn(8, 32)
+        set(v) { sp.edit().putInt("cursorStep", v).apply() }
+
+    /** Gap boshida avtomatik bosh harf. */
+    var autoCap: Boolean
+        get() = sp.getBoolean("autoCap", true)
+        set(v) { sp.edit().putBoolean("autoCap", v).apply() }
+
+    /** Asboblar qatorida koʻrinadigan tugmalar (bit: 0 emoji, 1 tarjima, 2 bufer, 3 ovoz, 4 sozlamalar, 5 «…»). */
+    var toolsMask: Int
+        get() = sp.getInt("toolsMask", 63) and 63
+        set(v) { sp.edit().putInt("toolsMask", v or 32).apply() } // «…» doim bor
+
+    /** Barcha koʻrinish/xatti-harakat sozlamalarini standartga qaytaradi (tillar va oʻrganilgan soʻzlarga tegmaydi). */
+    fun resetStyle() {
+        sp.edit()
+            .remove("keyRadius").remove("keyGap").remove("textScale").remove("keyShadow").remove("bottomPad")
+            .remove("hapticMs").remove("longPressMs").remove("cursorStep").remove("autoCap").remove("toolsMask")
+            .remove("theme").remove("accent").remove("height").remove("soundVol")
+            .apply()
+    }
+
+    fun registerListener(l: android.content.SharedPreferences.OnSharedPreferenceChangeListener) =
+        sp.registerOnSharedPreferenceChangeListener(l)
+
+    fun unregisterListener(l: android.content.SharedPreferences.OnSharedPreferenceChangeListener) =
+        sp.unregisterOnSharedPreferenceChangeListener(l)
+
     companion object {
         val DEFAULT_ENABLED = listOf("uz-latn-2026", "uz-latn-1995", "uz-cyrl", "ru", "en")
     }

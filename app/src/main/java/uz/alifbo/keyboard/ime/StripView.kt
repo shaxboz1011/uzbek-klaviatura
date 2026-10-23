@@ -33,6 +33,7 @@ class StripView(context: Context) : View(context) {
     var listener: Listener? = null
 
     private var suggestions: List<String> = emptyList()
+    private var tools = intArrayOf(EMOJI, TRANSLATE, CLIP, VOICE, SETTINGS, MORE)
     private var pressed = -1
 
     private val density = resources.displayMetrics.density
@@ -62,6 +63,17 @@ class StripView(context: Context) : View(context) {
         invalidate()
     }
 
+    /** Koʻrinadigan asboblar (bit niqobi: bit i — i-asbob). «…» har doim bor. */
+    fun setToolsMask(mask: Int) {
+        val m = mask or (1 shl MORE)
+        val t = (0 until TOOL_COUNT).filter { m and (1 shl it) != 0 }.toIntArray()
+        if (!t.contentEquals(tools)) {
+            tools = t
+            pressed = -1
+            invalidate()
+        }
+    }
+
     fun setSuggestions(list: List<String>) {
         if (list != suggestions) {
             suggestions = list
@@ -74,7 +86,7 @@ class StripView(context: Context) : View(context) {
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), (44 * density).toInt())
     }
 
-    private fun cellCount() = if (suggestions.isNotEmpty()) suggestions.size else TOOL_COUNT
+    private fun cellCount() = if (suggestions.isNotEmpty()) suggestions.size else tools.size
 
     private fun cellAt(x: Float): Int {
         val n = cellCount()
@@ -112,7 +124,7 @@ class StripView(context: Context) : View(context) {
         }
 
         for (i in 0 until n) {
-            drawTool(c, i, i * cw + cw / 2f, cy, 9f * density)
+            drawTool(c, tools[i], i * cw + cw / 2f, cy, 9f * density)
         }
     }
 
@@ -195,7 +207,7 @@ class StripView(context: Context) : View(context) {
                     if (suggestions.isNotEmpty()) {
                         if (c < suggestions.size) listener?.onSuggestion(suggestions[c])
                     } else {
-                        listener?.onTool(c)
+                        listener?.onTool(tools[c])
                     }
                 }
             }

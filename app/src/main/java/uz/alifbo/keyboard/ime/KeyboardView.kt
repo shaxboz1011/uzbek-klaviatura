@@ -115,7 +115,18 @@ class KeyboardView(context: Context) : View(context) {
     private var colPopup = 0
     private var colShadow = 0
 
-    private val longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
+    private var longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
+
+    // ---- foydalanuvchi sozlamalari ----
+    private var radiusDp = 9f
+    private var gapDp = 3f
+    private var textScale = 1f
+    private var shadowOn = true
+    private var extraBottom = 0f
+    private var hapticMs = 0
+    private var cursorStepDp = 16f
+    private var autoCap = true
+    private var vibrator: android.os.Vibrator? = null
 
     init {
         reloadColors()
@@ -170,6 +181,26 @@ class KeyboardView(context: Context) : View(context) {
         refreshRows()
     }
 
+    /** Barcha koʻrinish/xatti-harakat sozlamalarini Prefs dan oladi. */
+    fun applyStyle(p: uz.alifbo.keyboard.data.Prefs) {
+        val relayout = radiusDp != p.keyRadius.toFloat() || gapDp != p.keyGap.toFloat() ||
+            textScale != p.textScale / 100f || extraBottom != p.bottomPad.toFloat()
+        radiusDp = p.keyRadius.toFloat()
+        gapDp = p.keyGap.toFloat()
+        textScale = p.textScale / 100f
+        shadowOn = p.keyShadow
+        extraBottom = p.bottomPad.toFloat()
+        hapticMs = p.hapticMs
+        longPressMs = p.longPressMs.toLong()
+        cursorStepDp = p.cursorStep.toFloat()
+        if (autoCap != p.autoCap) {
+            autoCap = p.autoCap
+            if (!autoCap && shift == 1) shift = 0
+        }
+        if (relayout) requestLayout()
+        invalidate()
+    }
+
     fun setSwipeEnabled(on: Boolean) {
         swipeOn = on
     }
@@ -205,7 +236,7 @@ class KeyboardView(context: Context) : View(context) {
     /** Avto-bosh harf: cheksiz shift (caps lock) ga tegmaydi. */
     fun setAutoShift(on: Boolean) {
         if (shift == 2) return
-        val n = if (on) 1 else 0
+        val n = if (on && autoCap) 1 else 0
         if (n != shift) {
             shift = n
             invalidate()
@@ -247,7 +278,7 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val n = rows.size.coerceAtLeast(4)
-        val h = (n * dp(52f) * heightScale + dp(10f) + bottomInset).toInt()
+        val h = (n * dp(52f) * heightScale + dp(10f) + dp(extraBottom) + bottomInset).toInt()
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), h)
     }
 
@@ -264,7 +295,7 @@ class KeyboardView(context: Context) : View(context) {
 
         val padH = dp(3f)
         val padTop = dp(6f)
-        val padBottom = dp(4f)
+        val padBottom = dp(4f) + dp(extraBottom)
 
         var maxSum = 0f
         for (r in rows) {
@@ -316,8 +347,8 @@ class KeyboardView(context: Context) : View(context) {
         paintBg.color = colBg
         c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paintBg)
 
-        val g = dp(3f)
-        val radius = dp(9f)
+        val g = dp(gapDp)
+        val radius = dp(radiusDp)
         for (k in keys) {
             val r = k.rect
             tmp.set(r.left + g, r.top + g, r.right - g, r.bottom - g)
@@ -337,7 +368,7 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             if (isKeyPressed(k)) bg = colPressed
-            if (!isKeyPressed(k)) {
+            if (shadowOn && !isKeyPressed(k)) {
                 shadow.set(tmp.left, tmp.top + dp(1.3f), tmp.right, tmp.bottom + dp(1.3f))
                 paintKey.color = colShadow
                 c.drawRoundRect(shadow, radius, radius, paintKey)
@@ -364,13 +395,13 @@ class KeyboardView(context: Context) : View(context) {
                         drawIcon(c, lbl, cx, cy, rowH * 0.2f, fg, false)
                     } else {
                         paintText.color = fg
-                        paintText.textSize = rowH * 0.3f
+                        paintText.textSize = rowH * 0.3f * textScale
                         drawCentered(c, t, cx, cy, paintText)
                     }
                 }
                 "@sym" -> {
                     paintText.color = fg
-                    paintText.textSize = rowH * 0.3f
+                    paintText.textSize = rowH * 0.3f * textScale
                     drawCentered(c, "!#1", cx, cy, paintText)
                 }
                 "@page" -> {
@@ -380,7 +411,7 @@ class KeyboardView(context: Context) : View(context) {
                 }
                 "@abc" -> {
                     paintText.color = fg
-                    paintText.textSize = rowH * 0.3f
+                    paintText.textSize = rowH * 0.3f * textScale
                     drawCentered(c, "ABC", cx, cy, paintText)
                 }
                 "@space" -> {
@@ -391,7 +422,7 @@ class KeyboardView(context: Context) : View(context) {
                 else -> {
                     val t = if (shift != 0 && !symbols) lbl.uppercase(caseLocale) else lbl
                     paintText.color = fg
-                    paintText.textSize = rowH * (if (t.length > 1) 0.3f else 0.46f)
+                    paintText.textSize = rowH * (if (t.length > 1) 0.3f else 0.46f) * textScale
                     drawCentered(c, t, cx, cy, paintText)
                     val hint = k.spec.hint
                     if (hint != null && !numberRow) {
@@ -600,7 +631,7 @@ class KeyboardView(context: Context) : View(context) {
 
     private fun down(id: Int, x: Float, y: Float) {
         if (inFreeZone(x)) {
-            if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (haptic) buzz()
             listener?.onExitOneHanded()
             return
         }
@@ -616,11 +647,33 @@ class KeyboardView(context: Context) : View(context) {
             addPoint(p, x, y)
         }
         ptrs.put(id, p)
-        if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (haptic) buzz()
         if (sound) playClick(k.spec.label)
         arm(p, k)
         invalidate()
     }
+
+    /** Tugma bosilganda tebranish: kuch sozlangan boʻlsa — oʻsha davomiylikda, aks holda tizim standarti. */
+    private fun buzz() {
+        if (hapticMs <= 0) {
+            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            return
+        }
+        try {
+            val v = vibrator ?: context.getSystemService(android.os.Vibrator::class.java).also { vibrator = it } ?: return
+            if (Build.VERSION.SDK_INT >= 26) {
+                v.vibrate(android.os.VibrationEffect.createOneShot(hapticMs.toLong(), android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                v.vibrate(hapticMs.toLong())
+            }
+        } catch (e: Exception) {
+            performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        }
+    }
+
+    /** Sozlamalarda tebranish kuchini sinash uchun. */
+    fun previewHaptic() = buzz()
 
     private fun playClick(label: String) {
         val c = click ?: KeyClick().also { click = it; it.setVolume(soundVolume) }
@@ -738,7 +791,7 @@ class KeyboardView(context: Context) : View(context) {
 
         // Bo'sh joy ustida surish — kursorni siljitish
         if (cur.spec.label == "@space") {
-            val step = dp(16f)
+            val step = dp(cursorStepDp)
             var dx = x - p.anchor
             while (dx >= step) {
                 listener?.onCursor(1)
