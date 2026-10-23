@@ -16,7 +16,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Android SDK runner'da tayyor; faqat litsenziyalarni qabul qilamiz
       - name: Accept Android licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
@@ -28,9 +27,19 @@ jobs:
         run: python3 tools/build_registry.py
 
       - name: Build debug APK
-        run: >
-          gradle :app:assembleDebug --no-daemon
-          -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --no-daemon -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json 2>&1 | tee build.log
+
+      - name: Show compile errors
+        if: failure()
+        run: |
+          {
+            echo '### Kompilyator xatolari'
+            echo '```'
+            grep -E '^e: ' build.log | sed -E 's#file:///home/runner/work/[^/]+/[^/]+/##' || echo '(e: qatorlari topilmadi)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
