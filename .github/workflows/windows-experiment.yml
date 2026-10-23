@@ -16,27 +16,21 @@ jobs:
       - name: Install MSKLC
         shell: pwsh
         timeout-minutes: 6
-        run: choco install keyboard-layout-creator -y --no-progress --limit-output 2>&1 | Select-Object -Last 5
+        run: choco install keyboard-layout-creator -y --no-progress --limit-output 2>&1 | Select-Object -Last 3
 
-      - name: Generate KLC
+      - name: Generate KLC and build DLLs
         shell: pwsh
-        run: python windows/make_klc.py work
-
-      - name: kbdutool usage + build
-        shell: pwsh
-        timeout-minutes: 3
+        timeout-minutes: 5
         continue-on-error: true
         run: |
+          python windows/make_klc.py work
           $root = "C:\Program Files (x86)\Microsoft Keyboard Layout Creator 1.4"
           $env:PATH = "$root\bin\i386;" + $env:PATH
-          $env:INCLUDE = "$root\inc"
-          Write-Host "--- usage ---"
-          & kbdutool.exe 2>&1 | Select-Object -First 40
-          Write-Host "--- /? ---"
-          & kbdutool.exe /? 2>&1 | Select-Object -First 40
           Push-Location work
-          Write-Host "--- build -u -s ---"
-          & kbdutool.exe -v -w -u -s alifbo26.klc 2>&1 | Select-Object -First 80
-          Write-Host "exit: $LASTEXITCODE"
-          Get-ChildItem -Recurse | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 200
+          foreach ($arch in '-x','-m','-o') {
+            Write-Host "=== $arch ==="
+            & kbdutool.exe -u $arch alifbo26.klc 2>&1 | Select-Object -First 30
+            Write-Host "exit: $LASTEXITCODE"
+          }
+          Get-ChildItem -Recurse | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 220
           Pop-Location

@@ -43,7 +43,7 @@ def letters():
     L.append(key("0d", "OEM_PLUS", 0, "=", "+"))
     # 1-qator: Q Ş E R T Y U I O P  [Ö] [Ğ]
     L.append(key("10", "Q", 1, "q", "Q", "\x11"))
-    L.append(key("11", "W", 1, "ş", "Ş", "\x17", "w", "W"))
+    L.append(key("11", "W", 5, "ş", "Ş", "\x17", "w", "W"))
     for sc, vk, ch in (("12", "E", "e"), ("13", "R", "r"), ("14", "T", "t"), ("15", "Y", "y"),
                        ("16", "U", "u"), ("17", "I", "i"), ("18", "O", "o"), ("19", "P", "p")):
         L.append(key(sc, vk, 1, ch, ch.upper(), chr(ord(ch) - 96)))
@@ -60,14 +60,14 @@ def letters():
     # 3-qator: Z X Ç V B N M
     L.append(key("2c", "Z", 1, "z", "Z", "\x1a"))
     L.append(key("2d", "X", 1, "x", "X", "\x18"))
-    L.append(key("2e", "C", 1, "ç", "Ç", "\x03", "c", "C"))
+    L.append(key("2e", "C", 5, "ç", "Ç", "\x03", "c", "C"))
     for sc, vk, ch in (("2f", "V", "v"), ("30", "B", "b"), ("31", "N", "n"), ("32", "M", "m")):
         L.append(key(sc, vk, 1, ch, ch.upper(), chr(ord(ch) - 96)))
     L.append(key("33", "OEM_COMMA", 0, ",", "<"))
     L.append(key("34", "OEM_PERIOD", 0, ".", ">"))
     L.append(key("35", "OEM_2", 0, "/", "?"))
     L.append(key("39", "SPACE", 0, " ", " ", " "))
-    L.append(key("56", "OEM_102", 0, "\\", "|", "\x1c"))
+    L.append(key("56", "OEM_102", 0, "<", ">", "\x1c", "|", None))
     L.append(key("53", "DECIMAL", 0, ".", ".", None))
     return L
 
