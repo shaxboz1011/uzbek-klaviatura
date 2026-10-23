@@ -29,6 +29,33 @@ object AlphabetTools {
             .replace("ş", "sh").replace("Ş", "Sh")
             .replace("ç", "ch").replace("Ç", "Ch")
 
+    /** Oʻzbek kirill -> lotin (1995 imlosi: oʻ, gʻ, sh, ch). Rus kirillidagi harflar (ц, щ, ы...) ham yaqin lotin shakliga oʻgiriladi. */
+    fun cyrToLat(s: String): String {
+        val sb = StringBuilder()
+        val vowels = "аеёиоуўэюяАЕЁИОУЎЭЮЯ"
+        for ((i, ch) in s.withIndex()) {
+            val prev = if (i > 0) s[i - 1] else ' '
+            val startOrVowel = !prev.isLetter() || prev in vowels || prev == 'ъ' || prev == 'Ъ'
+            val up = ch.isUpperCase()
+            fun cap(x: String) = if (up) x.replaceFirstChar { it.uppercase() } else x
+            when (ch.lowercaseChar()) {
+                'а' -> sb.append(cap("a")); 'б' -> sb.append(cap("b")); 'в' -> sb.append(cap("v")); 'г' -> sb.append(cap("g"))
+                'д' -> sb.append(cap("d")); 'е' -> sb.append(if (startOrVowel) cap("ye") else cap("e"))
+                'ё' -> sb.append(cap("yo")); 'ж' -> sb.append(cap("j")); 'з' -> sb.append(cap("z")); 'и' -> sb.append(cap("i"))
+                'й' -> sb.append(cap("y")); 'к' -> sb.append(cap("k")); 'л' -> sb.append(cap("l")); 'м' -> sb.append(cap("m"))
+                'н' -> sb.append(cap("n")); 'о' -> sb.append(cap("o")); 'п' -> sb.append(cap("p")); 'р' -> sb.append(cap("r"))
+                'с' -> sb.append(cap("s")); 'т' -> sb.append(cap("t")); 'у' -> sb.append(cap("u")); 'ф' -> sb.append(cap("f"))
+                'х' -> sb.append(cap("x")); 'ц' -> sb.append(cap("ts")); 'ч' -> sb.append(cap("ch")); 'ш' -> sb.append(cap("sh"))
+                'щ' -> sb.append(cap("shch")); 'ъ' -> sb.append(TUTUQ); 'ы' -> sb.append(cap("i")); 'ь' -> {}
+                'э' -> sb.append(cap("e")); 'ю' -> sb.append(cap("yu")); 'я' -> sb.append(cap("ya"))
+                'ў' -> sb.append(cap("o") + OKINA); 'қ' -> sb.append(cap("q")); 'ғ' -> sb.append(cap("g") + OKINA)
+                'ҳ' -> sb.append(cap("h"))
+                else -> sb.append(ch)
+            }
+        }
+        return sb.toString()
+    }
+
     /** Qatorlarni abzatsga birlashtiradi: qator oxiridagi defis boʻgʻin koʻchirishi boʻlsa, soʻzni yopishtiradi. */
     fun reflow(lines: List<String>): String {
         val sb = StringBuilder()
