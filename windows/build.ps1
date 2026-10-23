@@ -2,6 +2,7 @@
 # Talab: Microsoft Keyboard Layout Creator 1.4  (choco install keyboard-layout-creator)
 param([string]$Out = "windows\out")
 $ErrorActionPreference = 'Stop'
+$Out = [System.IO.Path]::GetFullPath($Out)   # Push-Location dan oldin mutlaq yoʻlga aylantiramiz
 
 $root = "C:\Program Files (x86)\Microsoft Keyboard Layout Creator 1.4"
 if (-not (Test-Path "$root\bin\i386\kbdutool.exe")) { throw "MSKLC topilmadi: $root" }
