@@ -93,6 +93,13 @@ class Prefs(context: Context) {
             sp.edit().putBoolean("sound", v).apply()
         }
 
+    /** Tugma tovushi balandligi, foizda. */
+    var soundVolume: Int
+        get() = sp.getInt("soundVol", 40).coerceIn(5, 100)
+        set(v) {
+            sp.edit().putInt("soundVol", v).apply()
+        }
+
     /** Ikki marta boʻsh joy — nuqta va boʻsh joy. */
     var doubleSpacePeriod: Boolean
         get() = sp.getBoolean("dblSpace", true)

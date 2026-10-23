@@ -5,7 +5,6 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
 import android.util.SparseArray
@@ -85,7 +84,8 @@ class KeyboardView(context: Context) : View(context) {
     private var sound = false
     private var swipeOn = true
     private var symPage = 0
-    private var audio: AudioManager? = null
+    private var click: KeyClick? = null
+    private var soundVolume = 40
     private var bottomInset = 0
     private var rows: List<List<KeySpec>> = emptyList()
     private val keys = ArrayList<KeyRect>()
@@ -623,14 +623,24 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     private fun playClick(label: String) {
-        val am = audio ?: (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.also { audio = it } ?: return
-        val fx = when (label) {
-            "@del" -> AudioManager.FX_KEYPRESS_DELETE
-            "@enter" -> AudioManager.FX_KEYPRESS_RETURN
-            "@space" -> AudioManager.FX_KEYPRESS_SPACEBAR
-            else -> AudioManager.FX_KEYPRESS_STANDARD
-        }
-        am.playSoundEffect(fx)
+        val c = click ?: KeyClick().also { click = it; it.setVolume(soundVolume) }
+        c.play(
+            when (label) {
+                "@del" -> KeyClick.DELETE
+                "@space", "@enter" -> KeyClick.SPACE
+                else -> KeyClick.STANDARD
+            }
+        )
+    }
+
+    /** Sozlamalarda tovushni yoqqanda/balandlikni oʻzgartirganda namuna. */
+    fun previewClick() {
+        playClick("")
+    }
+
+    fun setSoundVolume(percent: Int) {
+        soundVolume = percent
+        click?.setVolume(percent)
     }
 
     /** Tugmaga qarab uzoq bosish / takrorlashni ishga tushiradi. */
@@ -819,6 +829,8 @@ class KeyboardView(context: Context) : View(context) {
     }
 
     override fun onDetachedFromWindow() {
+        click?.release()
+        click = null
         cancelAll()
         super.onDetachedFromWindow()
     }

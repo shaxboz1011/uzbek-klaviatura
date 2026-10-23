@@ -136,6 +136,19 @@ class SettingsActivity : Activity() {
             isChecked = prefs.sound
             setOnCheckedChangeListener { _, on -> prefs.sound = on }
         })
+        root.addView(body("Tovush balandligi (media ovozi bilan)"))
+        root.addView(SeekBar(this).apply {
+            max = 95
+            progress = prefs.soundVolume - 5
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
+                    if (fromUser) prefs.soundVolume = 5 + p
+                }
+
+                override fun onStartTrackingTouch(sb: SeekBar) {}
+                override fun onStopTrackingTouch(sb: SeekBar) {}
+            })
+        })
         root.addView(CheckBox(this).apply {
             text = "Ikki marta boʻsh joy — nuqta va boʻsh joy"
             isChecked = prefs.doubleSpacePeriod

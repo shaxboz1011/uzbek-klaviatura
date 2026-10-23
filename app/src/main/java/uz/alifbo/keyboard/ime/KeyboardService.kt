@@ -119,6 +119,7 @@ class KeyboardService : InputMethodService(),
         captureClip(false)
         val v = r.keyboard
         v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+        v.setSoundVolume(prefs.soundVolume)
         v.setNumberRow(prefs.numberRow)
         v.setOneHanded(prefs.oneHanded)
         v.setSwipeEnabled(prefs.swipe && !isSecretField(info))
@@ -370,6 +371,7 @@ class KeyboardService : InputMethodService(),
                 setInputView(onCreateInputView())
                 val nr = root ?: return
                 nr.keyboard.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+                nr.keyboard.setSoundVolume(prefs.soundVolume)
                 nr.keyboard.setNumberRow(prefs.numberRow)
                 nr.keyboard.setOneHanded(prefs.oneHanded)
                 nr.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
@@ -379,6 +381,8 @@ class KeyboardService : InputMethodService(),
             MorePanel.SOUND -> {
                 prefs.sound = !prefs.sound
                 r.keyboard.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+                r.keyboard.setSoundVolume(prefs.soundVolume)
+                if (prefs.sound) r.keyboard.previewClick()
                 r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
                 return
             }
