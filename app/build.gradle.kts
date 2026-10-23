@@ -10,6 +10,16 @@ plugins {
 val registryUrl: String = (project.findProperty("registryUrl") as String?)
     ?: "https://raw.githubusercontent.com/OWNER/REPO/main/registry/registry.json"
 
+// Versiya: build vaqtida  -PversionName=1.2.0  (release workflow tegdan oladi).
+// versionCode = major*10000 + minor*100 + patch, shunda yangi versiya eskisining ustiga oʻrnatiladi.
+val appVersionName: String = (project.findProperty("versionName") as String?) ?: "1.1.0"
+val appVersionCode: Int = appVersionName.split(".").mapNotNull { it.toIntOrNull() }.let {
+    (it.getOrElse(0) { 0 }) * 10000 + (it.getOrElse(1) { 0 }) * 100 + (it.getOrElse(2) { 0 })
+}.coerceAtLeast(1)
+
+// Qatʼiy imzo kaliti (GitHub Secrets). Boʻlmasa — standart debug kalit (faqat sinov uchun).
+val ksFile: String? = System.getenv("KEYSTORE_FILE")
+
 android {
     namespace = "uz.alifbo.keyboard"
     compileSdk = 35
@@ -18,9 +28,30 @@ android {
         applicationId = "uz.alifbo.keyboard"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         buildConfigField("String", "REGISTRY_URL", "\"$registryUrl\"")
+    }
+
+    signingConfigs {
+        if (ksFile != null) {
+            create("alifbo") {
+                storeFile = file(ksFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            if (ksFile != null) signingConfig = signingConfigs.getByName("alifbo")
+        }
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = if (ksFile != null) signingConfigs.getByName("alifbo") else signingConfigs.getByName("debug")
+        }
     }
 
     buildFeatures {

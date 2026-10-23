@@ -23,6 +23,24 @@ jobs:
         with:
           gradle-version: 8.9
 
+      # Qatʼiy imzo kaliti boʻlsa (Secrets), debug APK ham reliz bilan bir xil imzolanadi — ustiga oʻrnatish ishlaydi.
+      - name: Imzo kaliti (ixtiyoriy)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          K_ALIAS: ${{ secrets.KEY_ALIAS }}
+          K_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/alifbo.jks"
+            {
+              echo "KEYSTORE_FILE=$RUNNER_TEMP/alifbo.jks"
+              echo "KEYSTORE_PASSWORD=$KS_PASS"
+              echo "KEY_ALIAS=$K_ALIAS"
+              echo "KEY_PASSWORD=$K_PASS"
+            } >> "$GITHUB_ENV"
+          fi
+
       - name: Validate alphabet packs
         run: python3 tools/build_registry.py
 
