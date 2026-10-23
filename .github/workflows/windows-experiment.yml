@@ -12,34 +12,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download MSKLC
+      - name: choco / winget search
         shell: pwsh
+        continue-on-error: true
         run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://download.microsoft.com/download/6/f/5/6f5ce43a-e892-4fd0-a8a1-ae7ee2f5e1fc/MSKLC.exe" -OutFile msklc.exe
-          Get-Item msklc.exe | Select-Object Length
+          choco search msklc --limit-output
+          choco search "keyboard layout creator" --limit-output
+          winget --version
+          winget search "Keyboard Layout Creator" --accept-source-agreements
 
-      - name: Extract
+      - name: Compiler and kbd.h
         shell: pwsh
+        continue-on-error: true
         run: |
-          7z x msklc.exe -omsklc_x -y | Select-Object -Last 5
-          Get-ChildItem msklc_x -Recurse | Select-Object -First 40 FullName, Length
-          $msi = Get-ChildItem msklc_x -Recurse -Filter *.msi | Select-Object -First 1
-          Write-Host "MSI: $($msi.FullName)"
-          Start-Process msiexec.exe -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=C:\msklc" -Wait
-          Get-ChildItem C:\msklc -Recurse | Where-Object { $_.Name -match 'kbdutool|cl\.exe|link\.exe|kbd\.h|\.lib$' } | Select-Object -First 40 FullName, Length
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" -Directory | Select-Object Name
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" -Recurse -Filter kbd.h -ErrorAction SilentlyContinue | Select-Object FullName
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" -Recurse -Filter ntddkbd.h -ErrorAction SilentlyContinue | Select-Object -First 3 FullName
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          Write-Host "VS: $vs"
+          Get-ChildItem "$vs\VC\Tools\MSVC" -Directory | Select-Object Name
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory | Select-Object Name
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10" -Directory | Select-Object Name
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Extensions" -ErrorAction SilentlyContinue | Select-Object Name
 
-      - name: Try kbdutool
+      - name: Try MSKLC via choco
         shell: pwsh
+        continue-on-error: true
         run: |
-          $kbdutool = Get-ChildItem C:\msklc -Recurse -Filter kbdutool.exe | Select-Object -First 1
-          Write-Host "kbdutool: $($kbdutool.FullName)"
-          $klc = Get-Content windows\experiment\test.klc -Raw
-          Set-Content -Path test.klc -Value $klc -Encoding Unicode
-          Push-Location $env:RUNNER_TEMP
-          Copy-Item "$PWD\..\..\test.klc" . -ErrorAction SilentlyContinue
-          Pop-Location
-          & $kbdutool.FullName -v -u -s test.klc 2>&1 | Select-Object -First 60
-          Get-ChildItem . | Select-Object Name, Length
-          dotnet --list-runtimes
-          Get-WindowsOptionalFeature -Online -FeatureName NetFx3 | Select-Object State
+          choco install msklc -y --no-progress 2>&1 | Select-Object -Last 25
+          Get-ChildItem "C:\Program Files (x86)\Microsoft Keyboard Layout Creator 1.4" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 FullName
