@@ -7,44 +7,42 @@ on:
   workflow_dispatch:
 
 jobs:
-  info:
-    runs-on: windows-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: choco / winget search
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          choco search msklc --limit-output
-          choco search "keyboard layout creator" --limit-output
-          winget --version
-          winget search "Keyboard Layout Creator" --accept-source-agreements
-
-      - name: Compiler and kbd.h
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" -Directory | Select-Object Name
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" -Recurse -Filter kbd.h -ErrorAction SilentlyContinue | Select-Object FullName
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Include" -Recurse -Filter ntddkbd.h -ErrorAction SilentlyContinue | Select-Object -First 3 FullName
-          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
-          Write-Host "VS: $vs"
-          Get-ChildItem "$vs\VC\Tools\MSVC" -Directory | Select-Object Name
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Lib" -Directory | Select-Object Name
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10" -Directory | Select-Object Name
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Extensions" -ErrorAction SilentlyContinue | Select-Object Name
-
   msklc:
     runs-on: windows-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Try MSKLC via choco
+
+      - name: Install MSKLC (choco keyboard-layout-creator)
+        shell: pwsh
+        timeout-minutes: 6
+        continue-on-error: true
+        run: |
+          choco install keyboard-layout-creator -y --no-progress --limit-output 2>&1 | Select-Object -Last 30
+
+      - name: Inspect
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $root = Get-ChildItem "C:\Program Files (x86)" -Directory -Filter "Microsoft Keyboard Layout Creator*" | Select-Object -First 1
+          Write-Host "ROOT: $($root.FullName)"
+          Get-ChildItem $root.FullName -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -First 80 @{n='p';e={$_.FullName.Replace($root.FullName,'')}}, Length | Format-Table -AutoSize | Out-String -Width 200
+
+      - name: Run kbdutool on test layout
         shell: pwsh
         timeout-minutes: 3
         continue-on-error: true
         run: |
-          choco install msklc -y --no-progress 2>&1 | Select-Object -Last 25
-          Get-ChildItem "C:\Program Files (x86)\Microsoft Keyboard Layout Creator 1.4" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 40 FullName
+          $root = Get-ChildItem "C:\Program Files (x86)" -Directory -Filter "Microsoft Keyboard Layout Creator*" | Select-Object -First 1
+          $kbdutool = Get-ChildItem $root.FullName -Recurse -Filter kbdutool.exe | Select-Object -First 1
+          Write-Host "kbdutool: $($kbdutool.FullName)"
+          New-Item -ItemType Directory -Force -Path work | Out-Null
+          Copy-Item windows\experiment\test.klc work\testuz.klc
+          # KLC UTF-16LE (BOM)
+          $t = Get-Content work\testuz.klc -Raw -Encoding UTF8
+          [IO.File]::WriteAllText("$PWD\work\testuz.klc", $t, [Text.Encoding]::Unicode)
+          Push-Location work
+          & $kbdutool.FullName -v -u -s testuz.klc 2>&1 | Select-Object -First 80
+          Write-Host "exit: $LASTEXITCODE"
+          Get-ChildItem -Recurse | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 200
+          Pop-Location
