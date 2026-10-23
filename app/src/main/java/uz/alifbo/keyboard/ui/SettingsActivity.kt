@@ -10,10 +10,13 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
+import android.graphics.drawable.GradientDrawable
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -23,6 +26,7 @@ import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
 import uz.alifbo.keyboard.data.RemoteSync
+import uz.alifbo.keyboard.ime.Theme
 import java.text.DateFormat
 import java.util.Date
 
@@ -93,6 +97,26 @@ class SettingsActivity : Activity() {
             setOnCheckedChangeListener { _, on -> prefs.haptic = on }
         })
         root.addView(CheckBox(this).apply {
+            text = "Tugma bosilganda harfni tepada koʻrsatish"
+            isChecked = prefs.keyPreview
+            setOnCheckedChangeListener { _, on -> prefs.keyPreview = on }
+        })
+        root.addView(CheckBox(this).apply {
+            text = "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)"
+            isChecked = prefs.swipe
+            setOnCheckedChangeListener { _, on -> prefs.swipe = on }
+        })
+        root.addView(CheckBox(this).apply {
+            text = "Tugma bosilganda tovush"
+            isChecked = prefs.sound
+            setOnCheckedChangeListener { _, on -> prefs.sound = on }
+        })
+        root.addView(CheckBox(this).apply {
+            text = "Ikki marta boʻsh joy — nuqta va boʻsh joy"
+            isChecked = prefs.doubleSpacePeriod
+            setOnCheckedChangeListener { _, on -> prefs.doubleSpacePeriod = on }
+        })
+        root.addView(CheckBox(this).apply {
             text = "Doimiy raqamlar qatori"
             isChecked = prefs.numberRow
             setOnCheckedChangeListener { _, on -> prefs.numberRow = on }
@@ -109,6 +133,45 @@ class SettingsActivity : Activity() {
         root.addView(button("Bufer tarixini oʻchirish") {
             ClipStore.clearAll(this)
             Toast.makeText(this, "Oʻchirildi", Toast.LENGTH_SHORT).show()
+        })
+        root.addView(section("Koʻrinish"))
+        root.addView(RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            val names = listOf("Tizim", "Och", "Toʻq")
+            for ((i, n) in names.withIndex()) {
+                addView(RadioButton(context).apply {
+                    id = 1000 + i
+                    text = n
+                    setPadding(0, 0, dp(16), 0)
+                })
+            }
+            check(1000 + prefs.theme)
+            setOnCheckedChangeListener { _, id -> prefs.theme = id - 1000 }
+        })
+        root.addView(body("Urgʻu rangi"))
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            val dots = ArrayList<android.view.View>()
+            fun paint() {
+                for ((i, d) in dots.withIndex()) {
+                    val col = Theme.ACCENTS[i].let { if (it == 0) 0xFF1A5FE0.toInt() else it }
+                    d.background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setColor(col)
+                        if (prefs.accent == Theme.ACCENTS[i]) setStroke(dp(3), 0xFF888888.toInt())
+                    }
+                }
+            }
+            for (a in Theme.ACCENTS) {
+                val d = android.view.View(context)
+                dots.add(d)
+                d.setOnClickListener {
+                    prefs.accent = a
+                    paint()
+                }
+                addView(d, LinearLayout.LayoutParams(dp(36), dp(36)).apply { setMargins(0, dp(4), dp(12), dp(4)) })
+            }
+            paint()
         })
         root.addView(body("Balandlik"))
         root.addView(SeekBar(this).apply {

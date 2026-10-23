@@ -1,5 +1,6 @@
 package uz.alifbo.keyboard.ime
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.res.Configuration
@@ -9,8 +10,10 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import uz.alifbo.keyboard.data.ClipStore
 import uz.alifbo.keyboard.data.LayoutPack
+import uz.alifbo.keyboard.data.LexiconStore
 import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
@@ -20,13 +23,17 @@ import uz.alifbo.keyboard.ui.VoiceActivity
 import uz.alifbo.keyboard.ui.VoiceBridge
 
 class KeyboardService : InputMethodService(),
-    KeyboardView.Listener, StripView.Listener, EmojiPanel.Listener, ClipPanel.Listener {
+    KeyboardView.Listener, StripView.Listener, EmojiPanel.Listener, ClipPanel.Listener,
+    MorePanel.Listener, TranslatePanel.Listener {
 
     private var root: KeyboardRoot? = null
     private lateinit var prefs: Prefs
     private var packs: List<LayoutPack> = emptyList()
     private var loadedGen = -1
     private var loadedSig = ""
+    private var builtTheme = ""
+    private var secretField = false
+    private var swipeWord: String? = null
 
     private var suggestOn = true
     private var learnOn = true
@@ -66,15 +73,21 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onCreateInputView(): View {
-        val r = KeyboardRoot(this)
+        builtTheme = themeSig()
+        val r = KeyboardRoot(Theme.themed(this, prefs.theme))
         r.keyboard.listener = this
+        r.keyboard.learnedWords = { if (learnOn) Predictor.snapshot(this) else emptyMap() }
         r.strip.listener = this
         r.emoji.listener = this
         r.clip.listener = this
+        r.more.listener = this
+        r.translate.listener = this
         root = r
         reloadPacks()
         return r
     }
+
+    private fun themeSig() = "${prefs.theme}/${prefs.accent}"
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 
@@ -88,18 +101,24 @@ class KeyboardService : InputMethodService(),
         val sig = prefs.enabledIds.joinToString(",")
         if (loadedGen != PackStore.generation || loadedSig != sig) reloadPacks()
 
+        if (builtTheme != themeSig()) {
+            setInputView(onCreateInputView())
+        }
         val r = root ?: return
+        r.reloadColors()
         r.showPanel(KeyboardRoot.KEYBOARD)
         val v = r.keyboard
-        v.applyPrefs(prefs.haptic, prefs.heightPercent)
+        v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
         v.setNumberRow(prefs.numberRow)
         v.setOneHanded(prefs.oneHanded)
-        r.strip.setOneHandMode(prefs.oneHanded)
+        v.setSwipeEnabled(prefs.swipe && !isSecretField(info))
 
         val secret = isSecretField(info)
+        secretField = secret
         suggestOn = prefs.suggestions && !secret
         learnOn = suggestOn && (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
         prevWord = ""
+        swipeWord = null
         r.strip.setSuggestions(emptyList())
 
         when (info.inputType and InputType.TYPE_MASK_CLASS) {
@@ -150,7 +169,12 @@ class KeyboardService : InputMethodService(),
         loadedSig = enabled.joinToString(",")
         val cur = prefs.currentId
         val p = list.firstOrNull { it.id == cur } ?: list.firstOrNull() ?: return
+        applyPack(p)
+    }
+
+    private fun applyPack(p: LayoutPack) {
         root?.keyboard?.setPack(p)
+        LexiconStore.loadAsync(this, p) {}
     }
 
     private fun enterLabelFor(info: EditorInfo): String? {
@@ -200,6 +224,21 @@ class KeyboardService : InputMethodService(),
 
     override fun onSuggestion(text: String) {
         val ic = currentInputConnection ?: return
+        val sw = swipeWord
+        if (sw != null) {
+            swipeWord = null
+            val tail = ic.getTextBeforeCursor(sw.length + 1, 0)?.toString()
+            if (tail == "$sw ") {
+                ic.beginBatchEdit()
+                ic.deleteSurroundingText(sw.length + 1, 0)
+                ic.commitText("$text ", 1)
+                ic.endBatchEdit()
+                if (learnOn) Predictor.learn(this, text)
+                root?.strip?.setSuggestions(emptyList())
+                updateShift()
+                return
+            }
+        }
         val before = ic.getTextBeforeCursor(40, 0) ?: ""
         val cur = trailingWord(before)
         val out = if (cur.isNotEmpty() && cur[0].isUpperCase()) text.replaceFirstChar { it.uppercase() } else text
@@ -222,22 +261,30 @@ class KeyboardService : InputMethodService(),
                 r.emoji.show(prefs.emojiRecents)
                 r.showPanel(KeyboardRoot.EMOJI)
             }
+            StripView.TRANSLATE -> {
+                r.showPanel(KeyboardRoot.TRANSLATE)
+                r.translate.open(currentLang(), secretField)
+            }
             StripView.CLIP -> {
                 r.clip.show(ClipStore.list(this))
                 r.showPanel(KeyboardRoot.CLIP)
             }
             StripView.VOICE -> startVoice()
-            StripView.ONEHAND -> {
-                val m = (prefs.oneHanded + 1) % 3
-                prefs.oneHanded = m
-                r.keyboard.setOneHanded(m)
-                r.strip.setOneHandMode(m)
+            StripView.SETTINGS -> openSettings()
+            StripView.MORE -> {
+                r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
+                r.showPanel(KeyboardRoot.MORE)
             }
-            StripView.SETTINGS -> {
-                startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
-            StripView.HIDE -> requestHideSelf(0)
         }
+    }
+
+    private fun openSettings() {
+        startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    private fun currentLang(): String {
+        val p = packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull()
+        return p?.locale?.language ?: "uz"
     }
 
     private fun startVoice() {
@@ -280,10 +327,147 @@ class KeyboardService : InputMethodService(),
         root?.clip?.show(ClipStore.list(this))
     }
 
+    // ---------------------------------------------------------------- «…» menyusi
+
+    override fun onMore(id: Int) {
+        val r = root ?: return
+        val ic = currentInputConnection
+        when (id) {
+            MorePanel.SELECT_ALL -> ic?.performContextMenuAction(android.R.id.selectAll)
+            MorePanel.COPY -> ic?.performContextMenuAction(android.R.id.copy)
+            MorePanel.CUT -> ic?.performContextMenuAction(android.R.id.cut)
+            MorePanel.PASTE -> ic?.performContextMenuAction(android.R.id.paste)
+            MorePanel.CURSOR_LEFT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+            MorePanel.CURSOR_RIGHT -> sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+            MorePanel.CLEAR -> {
+                if (ic != null) {
+                    ic.beginBatchEdit()
+                    ic.performContextMenuAction(android.R.id.selectAll)
+                    ic.commitText("", 1)
+                    ic.endBatchEdit()
+                }
+            }
+            MorePanel.ONEHAND -> {
+                val m = (prefs.oneHanded + 1) % 3
+                prefs.oneHanded = m
+                r.keyboard.setOneHanded(m)
+                r.more.show(m, prefs.theme, prefs.sound)
+                return
+            }
+            MorePanel.THEME -> {
+                prefs.theme = (prefs.theme + 1) % 3
+                setInputView(onCreateInputView())
+                val nr = root ?: return
+                nr.keyboard.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+                nr.keyboard.setNumberRow(prefs.numberRow)
+                nr.keyboard.setOneHanded(prefs.oneHanded)
+                nr.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
+                nr.showPanel(KeyboardRoot.MORE)
+                return
+            }
+            MorePanel.SOUND -> {
+                prefs.sound = !prefs.sound
+                r.keyboard.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+                r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
+                return
+            }
+            MorePanel.SETTINGS -> {
+                openSettings()
+                return
+            }
+            MorePanel.HIDE -> {
+                r.showPanel(KeyboardRoot.KEYBOARD)
+                requestHideSelf(0)
+                return
+            }
+        }
+        // Tahrirlash amallaridan keyin klaviaturaga qaytamiz.
+        if (id == MorePanel.SELECT_ALL || id == MorePanel.COPY || id == MorePanel.CUT ||
+            id == MorePanel.PASTE || id == MorePanel.CLEAR
+        ) {
+            r.showPanel(KeyboardRoot.KEYBOARD)
+            refreshSuggestions(false)
+            updateShift()
+        }
+    }
+
+    // ---------------------------------------------------------------- tezkor tarjima
+
+    override fun onTranslateBack() {
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+    }
+
+    override fun onTranslateSource(): TranslatePanel.Source? {
+        val ic = currentInputConnection ?: return null
+        val sel = ic.getSelectedText(0)
+        if (!sel.isNullOrEmpty()) return TranslatePanel.Source(sel.toString(), true, 0, 0)
+        val before = ic.getTextBeforeCursor(1500, 0) ?: ""
+        val after = ic.getTextAfterCursor(1500, 0) ?: ""
+        val all = before.toString() + after.toString()
+        return TranslatePanel.Source(all, false, before.length, after.length)
+    }
+
+    override fun onTranslateReplace(result: String, src: TranslatePanel.Source) {
+        val ic = currentInputConnection ?: return
+        ic.beginBatchEdit()
+        if (!src.selected) ic.deleteSurroundingText(src.before, src.after)
+        ic.commitText(result, 1)
+        ic.endBatchEdit()
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+        refreshSuggestions(false)
+        updateShift()
+    }
+
+    override fun onTranslateInsert(result: String) {
+        currentInputConnection?.commitText(result, 1)
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+        refreshSuggestions(false)
+        updateShift()
+    }
+
+    override fun onTranslateCopy(result: String) {
+        val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("tarjima", result))
+        Toast.makeText(this, "Nusxalandi", Toast.LENGTH_SHORT).show()
+    }
+
     // ---------------------------------------------------------------- KeyboardView.Listener
 
+    override fun onExitOneHanded() {
+        prefs.oneHanded = 0
+        root?.keyboard?.setOneHanded(0)
+    }
+
+    override fun onSwipe(words: List<String>) {
+        val ic = currentInputConnection ?: return
+        val best = words.firstOrNull() ?: return
+        val b = ic.getTextBeforeCursor(1, 0)
+        val lead = if (!b.isNullOrEmpty() && (b[0].isLetterOrDigit() || b[0] in ".,!?:;)")) " " else ""
+        ic.commitText("$lead$best ", 1)
+        if (learnOn) Predictor.learn(this, best.lowercase())
+        updateShift()
+        prevWord = ""
+        swipeWord = best
+        root?.strip?.setSuggestions(if (words.size > 1 && suggestOn) words else emptyList())
+    }
+
     override fun onText(text: String) {
-        currentInputConnection?.commitText(text, 1)
+        swipeWord = null
+        val ic = currentInputConnection
+        if (text == " " && prefs.doubleSpacePeriod && !secretField && ic != null) {
+            // Ikki marta boʻsh joy: "soʻz " + " " -> "soʻz. "
+            val b = ic.getTextBeforeCursor(2, 0)
+            if (b != null && b.length == 2 && b[1] == ' ' && (b[0].isLetterOrDigit())) {
+                ic.beginBatchEdit()
+                ic.deleteSurroundingText(1, 0)
+                ic.commitText(". ", 1)
+                ic.endBatchEdit()
+                refreshSuggestions(true)
+                updateShift()
+                return
+            }
+        }
+        ic?.commitText(text, 1)
         val last = text.lastOrNull()
         val boundary = last != null && !(last.isLetter() || last == 'ʻ' || last == 'ʼ' || last == '\'')
         refreshSuggestions(boundary)
@@ -291,18 +475,31 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onDelete() {
+        val sw = swipeWord
+        if (sw != null) {
+            swipeWord = null
+            val ic = currentInputConnection
+            if (ic != null && ic.getTextBeforeCursor(sw.length + 1, 0)?.toString() == "$sw ") {
+                ic.deleteSurroundingText(sw.length + 1, 0)
+                root?.strip?.setSuggestions(emptyList())
+                updateShift()
+                return
+            }
+        }
         sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         refreshSuggestions(false)
         updateShift()
     }
 
     override fun onEnter() {
+        swipeWord = null
         if (!sendDefaultEditorAction(true)) sendKeyChar('\n')
         refreshSuggestions(true)
         updateShift()
     }
 
     override fun onCursor(dir: Int) {
+        swipeWord = null
         sendDownUpKeyEvents(if (dir > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT)
         refreshSuggestions(false)
     }
@@ -315,7 +512,7 @@ class KeyboardService : InputMethodService(),
         val i = packs.indexOfFirst { it.id == prefs.currentId }.coerceAtLeast(0)
         val p = packs[(i + 1) % packs.size]
         prefs.currentId = p.id
-        root?.keyboard?.setPack(p)
+        applyPack(p)
         updateShift()
     }
 

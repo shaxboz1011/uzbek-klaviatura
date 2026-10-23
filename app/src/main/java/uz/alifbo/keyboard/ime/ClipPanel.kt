@@ -56,7 +56,7 @@ class ClipPanel(context: Context) : LinearLayout(context) {
         textSize = 14f
         gravity = Gravity.CENTER
         setPadding(dp(12), 0, dp(12), 0)
-        setTextColor(context.getColor(R.color.kb_accent))
+        setTextColor(Theme.accent(context))
         setOnClickListener { onClick() }
     }
 

@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
 import android.util.SparseArray
@@ -13,10 +14,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowInsets
+import kotlin.math.hypot
 import uz.alifbo.keyboard.R
 import uz.alifbo.keyboard.data.DefaultLayers
 import uz.alifbo.keyboard.data.KeySpec
 import uz.alifbo.keyboard.data.LayoutPack
+import uz.alifbo.keyboard.data.Lexicon
+import uz.alifbo.keyboard.data.LexiconStore
 import java.util.Locale
 
 /**
@@ -33,7 +37,13 @@ class KeyboardView(context: Context) : View(context) {
         fun onLangNext()
         fun onLangPicker()
         fun onCursor(dir: Int)
+        fun onExitOneHanded()
+        /** Surib yozish natijasi: birinchisi — eng yaxshi nomzod. */
+        fun onSwipe(words: List<String>)
     }
+
+    /** Surib yozish uchun oʻrganilgan soʻzlar. */
+    var learnedWords: (() -> Map<String, Int>)? = null
 
     var listener: Listener? = null
 
@@ -51,6 +61,13 @@ class KeyboardView(context: Context) : View(context) {
         var altIndex = 0
         var consumed = false
         var longRun: Runnable? = null
+        var track = false
+        var swipe = false
+        var xs = FloatArray(512)
+        var ys = FloatArray(512)
+        var np = 0
+        var sx = 0f
+        var sy = 0f
         var repRun: Runnable? = null
     }
 
@@ -64,6 +81,11 @@ class KeyboardView(context: Context) : View(context) {
     private var enterLabel: String? = null
     private var haptic = true
     private var heightScale = 1f
+    private var keyPreview = true
+    private var sound = false
+    private var swipeOn = true
+    private var symPage = 0
+    private var audio: AudioManager? = null
     private var bottomInset = 0
     private var rows: List<List<KeySpec>> = emptyList()
     private val keys = ArrayList<KeyRect>()
@@ -72,6 +94,7 @@ class KeyboardView(context: Context) : View(context) {
     // ---- chizish ----
     private val density = resources.displayMetrics.density
     private val tmp = RectF()
+    private val shadow = RectF()
     private val path = Path()
     private val paintBg = Paint(Paint.ANTI_ALIAS_FLAG)
     private val paintKey = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -90,6 +113,7 @@ class KeyboardView(context: Context) : View(context) {
     private var colHint = 0
     private var colAccent = 0
     private var colPopup = 0
+    private var colShadow = 0
 
     private val longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
 
@@ -119,8 +143,9 @@ class KeyboardView(context: Context) : View(context) {
         colPressed = context.getColor(R.color.kb_key_pressed)
         colText = context.getColor(R.color.kb_text)
         colHint = context.getColor(R.color.kb_hint)
-        colAccent = context.getColor(R.color.kb_accent)
+        colAccent = Theme.accent(context)
         colPopup = context.getColor(R.color.kb_popup)
+        colShadow = context.getColor(R.color.kb_key_shadow)
         invalidate()
     }
 
@@ -135,6 +160,7 @@ class KeyboardView(context: Context) : View(context) {
     fun setSymbols(on: Boolean) {
         if (symbols == on) return
         symbols = on
+        symPage = 0
         refreshRows()
     }
 
@@ -142,6 +168,10 @@ class KeyboardView(context: Context) : View(context) {
         if (numberRow == on) return
         numberRow = on
         refreshRows()
+    }
+
+    fun setSwipeEnabled(on: Boolean) {
+        swipeOn = on
     }
 
     fun setOneHanded(mode: Int) {
@@ -158,8 +188,13 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    fun applyPrefs(haptic: Boolean, heightPercent: Int) {
+    fun applyPrefs(haptic: Boolean, heightPercent: Int, keyPreview: Boolean = true, sound: Boolean = false) {
         this.haptic = haptic
+        this.sound = sound
+        if (this.keyPreview != keyPreview) {
+            this.keyPreview = keyPreview
+            invalidate()
+        }
         val hs = heightPercent / 100f
         if (hs != heightScale) {
             heightScale = hs
@@ -183,7 +218,7 @@ class KeyboardView(context: Context) : View(context) {
         val p = pack
         rows = when {
             p == null -> emptyList()
-            symbols -> DefaultLayers.symbols
+            symbols -> if (symPage == 1) DefaultLayers.symbols2 else DefaultLayers.symbols
             else -> {
                 val letters = p.rows + listOf(p.bottom)
                 if (numberRow) {
@@ -212,7 +247,7 @@ class KeyboardView(context: Context) : View(context) {
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         val n = rows.size.coerceAtLeast(4)
-        val h = (n * dp(50f) * heightScale + dp(10f) + bottomInset).toInt()
+        val h = (n * dp(52f) * heightScale + dp(10f) + bottomInset).toInt()
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), h)
     }
 
@@ -302,6 +337,11 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             if (isKeyPressed(k)) bg = colPressed
+            if (!isKeyPressed(k)) {
+                shadow.set(tmp.left, tmp.top + dp(1.3f), tmp.right, tmp.bottom + dp(1.3f))
+                paintKey.color = colShadow
+                c.drawRoundRect(shadow, radius, radius, paintKey)
+            }
             paintKey.color = bg
             c.drawRoundRect(tmp, radius, radius, paintKey)
 
@@ -333,6 +373,11 @@ class KeyboardView(context: Context) : View(context) {
                     paintText.textSize = rowH * 0.3f
                     drawCentered(c, "!#1", cx, cy, paintText)
                 }
+                "@page" -> {
+                    paintText.color = fg
+                    paintText.textSize = rowH * 0.28f
+                    drawCentered(c, if (symPage == 0) "1/2" else "2/2", cx, cy, paintText)
+                }
                 "@abc" -> {
                     paintText.color = fg
                     paintText.textSize = rowH * 0.3f
@@ -341,7 +386,7 @@ class KeyboardView(context: Context) : View(context) {
                 "@space" -> {
                     paintText.color = colText
                     paintText.textSize = rowH * 0.28f
-                    drawCentered(c, pack?.name ?: "", cx, cy, paintText)
+                    drawCentered(c, fitText(spaceLabel(), tmp.width() - dp(16f), rowH), cx, cy, paintText)
                 }
                 else -> {
                     val t = if (shift != 0 && !symbols) lbl.uppercase(caseLocale) else lbl
@@ -355,6 +400,55 @@ class KeyboardView(context: Context) : View(context) {
                         c.drawText(hint, tmp.right - dp(4f), tmp.top + rowH * 0.26f, paintHint)
                     }
                 }
+            }
+        }
+
+        // Surib yozish izi
+        for (i in 0 until ptrs.size()) {
+            val p = ptrs.valueAt(i)
+            if (!p.swipe || p.np < 2) continue
+            path.reset()
+            path.moveTo(p.xs[0], p.ys[0])
+            for (j in 1 until p.np) path.lineTo(p.xs[j], p.ys[j])
+            paintIcon.style = Paint.Style.STROKE
+            paintIcon.color = (colAccent and 0x00FFFFFF) or 0xB0000000.toInt()
+            val w = paintIcon.strokeWidth
+            paintIcon.strokeWidth = dp(5f)
+            c.drawPath(path, paintIcon)
+            paintIcon.strokeWidth = w
+        }
+
+        // Bir qo'l rejimi: bo'sh tomondagi tugma — oddiy rejimga qaytaradi
+        if (oneHanded != 0) {
+            val fullW = width - 2 * dp(3f)
+            val freeW = fullW * 0.18f
+            val left = if (oneHanded == 2) dp(3f) else width - dp(3f) - freeW
+            tmp.set(left + g, height * 0.5f - dp(30f), left + freeW - g, height * 0.5f + dp(30f))
+            paintKey.color = colSpecial
+            c.drawRoundRect(tmp, radius, radius, paintKey)
+            paintText.color = colText
+            paintText.textSize = dp(20f)
+            drawCentered(c, "⤢", tmp.centerX(), tmp.centerY(), paintText)
+        }
+
+        // Tugma ustida chiqadigan harf (Samsung kabi)
+        if (keyPreview) {
+            for (i in 0 until ptrs.size()) {
+                val p = ptrs.valueAt(i)
+                val k = p.key ?: continue
+                if (p.alts != null || p.swipe || k.spec.isToken || k.row == 0) continue
+                val t = if (shift != 0 && !symbols) k.spec.label.uppercase(caseLocale) else k.spec.label
+                val r = k.rect
+                val bw = maxOf(r.width(), dp(48f))
+                val bh = r.height() * 1.1f
+                val left = (r.centerX() - bw / 2f).coerceIn(0f, width - bw)
+                val top = r.top - bh - dp(2f)
+                tmp.set(left, top, left + bw, top + bh)
+                paintKey.color = colPopup
+                c.drawRoundRect(tmp, radius, radius, paintKey)
+                paintText.color = colText
+                paintText.textSize = bh * 0.5f
+                drawCentered(c, t, tmp.centerX(), tmp.centerY(), paintText)
             }
         }
 
@@ -379,6 +473,30 @@ class KeyboardView(context: Context) : View(context) {
                 paintText.textSize = p.stripH * 0.4f
                 drawCentered(c, a[j], l + p.cellW / 2f, p.stripTop + p.stripH / 2f, paintText)
             }
+        }
+    }
+
+    private fun spaceLabel(): String = pack?.name ?: ""
+
+    /** Matn tugmaga sigʻmasa — avval kichraytiradi, keyin qisqa nomga oʻtadi, oxirida "…" bilan kesadi. */
+    private fun fitText(t: String, maxW: Float, rowH: Float): String {
+        if (maxW <= 0f) return ""
+        val minSize = rowH * 0.2f
+        var text = t
+        while (true) {
+            while (paintText.textSize > minSize && paintText.measureText(text) > maxW) {
+                paintText.textSize -= dp(0.5f)
+            }
+            if (paintText.measureText(text) <= maxW) return text
+            val short = pack?.short
+            if (short != null && text != short) {
+                text = short
+                paintText.textSize = rowH * 0.28f
+                continue
+            }
+            var n = text.length
+            while (n > 1 && paintText.measureText(text.substring(0, n) + "…") > maxW) n--
+            return text.substring(0, n) + "…"
         }
     }
 
@@ -473,16 +591,46 @@ class KeyboardView(context: Context) : View(context) {
         return best
     }
 
+    private fun inFreeZone(x: Float): Boolean {
+        if (oneHanded == 0) return false
+        val fullW = width - 2 * dp(3f)
+        val freeW = fullW * 0.18f
+        return if (oneHanded == 2) x < dp(3f) + freeW else x > width - dp(3f) - freeW
+    }
+
     private fun down(id: Int, x: Float, y: Float) {
+        if (inFreeZone(x)) {
+            if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            listener?.onExitOneHanded()
+            return
+        }
         val k = hit(x, y) ?: return
         val p = Ptr(id)
         p.key = k
         p.x = x
         p.anchor = x
+        if (swipeOn && !symbols && !k.spec.isToken && k.spec.label.length == 1 && k.spec.label[0].isLetter()) {
+            p.track = true
+            p.sx = x
+            p.sy = y
+            addPoint(p, x, y)
+        }
         ptrs.put(id, p)
         if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (sound) playClick(k.spec.label)
         arm(p, k)
         invalidate()
+    }
+
+    private fun playClick(label: String) {
+        val am = audio ?: (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.also { audio = it } ?: return
+        val fx = when (label) {
+            "@del" -> AudioManager.FX_KEYPRESS_DELETE
+            "@enter" -> AudioManager.FX_KEYPRESS_RETURN
+            "@space" -> AudioManager.FX_KEYPRESS_SPACEBAR
+            else -> AudioManager.FX_KEYPRESS_STANDARD
+        }
+        am.playSoundEffect(fx)
     }
 
     /** Tugmaga qarab uzoq bosish / takrorlashni ishga tushiradi. */
@@ -564,6 +712,20 @@ class KeyboardView(context: Context) : View(context) {
         }
         val cur = p.key ?: return
 
+        if (p.track) {
+            addPoint(p, x, y)
+            if (!p.swipe && hypot(x - p.sx, y - p.sy) > maxOf(cur.rect.width(), dp(40f))) {
+                p.swipe = true
+                p.consumed = true
+                disarm(p)
+                invalidate()
+            }
+            if (p.swipe) {
+                invalidate()
+                return
+            }
+        }
+
         // Bo'sh joy ustida surish — kursorni siljitish
         if (cur.spec.label == "@space") {
             val step = dp(16f)
@@ -603,12 +765,51 @@ class KeyboardView(context: Context) : View(context) {
         disarm(p)
         val alts = p.alts
         val k = p.key
-        if (alts != null) {
+        if (p.swipe) {
+            finishSwipe(p)
+        } else if (alts != null) {
             commit(alts[p.altIndex.coerceIn(0, alts.size - 1)])
         } else if (k != null && !p.consumed) {
             fire(k.spec)
         }
         invalidate()
+    }
+
+    private fun addPoint(p: Ptr, x: Float, y: Float) {
+        if (p.np > 0 && hypot(x - p.xs[p.np - 1], y - p.ys[p.np - 1]) < dp(2f)) return
+        if (p.np == p.xs.size) {
+            p.xs = p.xs.copyOf(p.np * 2)
+            p.ys = p.ys.copyOf(p.np * 2)
+        }
+        p.xs[p.np] = x
+        p.ys[p.np] = y
+        p.np++
+    }
+
+    private fun finishSwipe(p: Ptr) {
+        val pk = pack ?: return
+        val centers = HashMap<Char, FloatArray>()
+        var w = 0f
+        for (k in keys) {
+            val l = k.spec.label
+            if (k.spec.isToken || l.length != 1 || !l[0].isLetter()) continue
+            centers[l[0].lowercaseChar()] = floatArrayOf(k.rect.centerX(), k.rect.centerY())
+            if (w == 0f) w = k.rect.width()
+        }
+        val learned = learnedWords?.invoke() ?: emptyMap()
+        var words = SwipeDecoder.decode(p.xs, p.ys, p.np, centers, w, LexiconStore.get(pk), learned, 3)
+        if (words.isEmpty()) return
+        val loc = caseLocale
+        words = when (shift) {
+            2 -> words.map { it.uppercase(loc) }
+            1 -> words.map { it.replaceFirstChar { c -> c.uppercase(loc) } }
+            else -> words
+        }
+        if (shift == 1) {
+            shift = 0
+            invalidate()
+        }
+        listener?.onSwipe(words)
     }
 
     private fun cancelAll() {
@@ -630,6 +831,10 @@ class KeyboardView(context: Context) : View(context) {
             "@del" -> listener?.onDelete()
             "@sym" -> setSymbols(true)
             "@abc" -> setSymbols(false)
+            "@page" -> {
+                symPage = 1 - symPage
+                refreshRows()
+            }
             "@lang" -> listener?.onLangNext()
             "@space" -> commit(" ")
             "@enter" -> {
