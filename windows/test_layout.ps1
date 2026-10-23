@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 public class KL {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr LoadKeyboardLayout(string klid, uint flags);
-  [DllImport("user32.dll")] public static extern int ToUnicodeEx(uint vk, uint sc, byte[] state, StringBuilder buf, int cch, uint flags, IntPtr hkl);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int ToUnicodeEx(uint vk, uint sc, byte[] state, StringBuilder buf, int cch, uint flags, IntPtr hkl);
 }
 "@
 $hkl = [KL]::LoadKeyboardLayout("a0260443", 0)
