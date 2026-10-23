@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "updated": "2026-10-23",
+  "packs": [
+    {
+      "id": "az",
+      "version": 1,
+      "name": "Azərbaycanca",
+      "country": "AZ",
+      "url": "packs/az.json",
+      "sha256": "e3f5f45f56a76a847b33bb789696ffc33333c39cc870f9e8fe23d2ddf66bd5cf"
+    },
+    {
+      "id": "en",
+      "version": 1,
+      "name": "English",
+      "country": "US",
+      "url": "packs/en.json",
+      "sha256": "8c7fb8a6b8e503a961a37bd691ac03238d10b559bc2985ca26c4dfb20e083206"
+    },
+    {
+      "id": "kk",
+      "version": 1,
+      "name": "Қазақша — кирилл",
+      "country": "KZ",
+      "url": "packs/kk.json",
+      "sha256": "7489ea14fd3a9a3834ba166fce6ffe0ca581ef8154d1933c408cf56500ced0d5"
+    },
+    {
+      "id": "ky",
+      "version": 1,
+      "name": "Кыргызча",
+      "country": "KG",
+      "url": "packs/ky.json",
+      "sha256": "aaf64ffa90cc5e3c85d5dc568177d1fb084755ed297db8c9ae464e950119b10c"
+    },
+    {
+      "id": "ru",
+      "version": 1,
+      "name": "Русский",
+      "country": "RU",
+      "url": "packs/ru.json",
+      "sha256": "afeb865a6678a78308970ef340517dcb193d669d6f9eb861a1cae2fb0215a825"
+    },
+    {
+      "id": "tg",
+      "version": 1,
+      "name": "Тоҷикӣ",
+      "country": "TJ",
+      "url": "packs/tg.json",
+      "sha256": "bba06fd89fa96c7340ded811c4351883c1d44f55e507010adacf3dc8ef23991b"
+    },
+    {
+      "id": "tr",
+      "version": 1,
+      "name": "Türkçe",
+      "country": "TR",
+      "url": "packs/tr.json",
+      "sha256": "5385beb31f2ad18db379b9b99f137e5f5a53ba15f6ec5bc105a32288780a7ca3"
+    },
+    {
+      "id": "uz-cyrl",
+      "version": 1,
+      "name": "Ўзбекча — кирилл",
+      "country": "UZ",
+      "url": "packs/uz-cyrl.json",
+      "sha256": "66087da534b28d214381f4818331891b062b5c70bb07dddd6ac0903b287b6f60"
+    },
+    {
+      "id": "uz-latn-1995",
+      "version": 1,
+      "name": "Oʻzbekcha — amaldagi lotin (1995)",
+      "country": "UZ",
+      "url": "packs/uz-latn-1995.json",
+      "sha256": "f7ceae9c56102c9de94ed261a73c64c76b8729ab659f2cb555a5c589d9694e0a"
+    },
+    {
+      "id": "uz-latn-2026",
+      "version": 1,
+      "name": "Oʻzbekcha — yangi lotin (2026)",
+      "country": "UZ",
+      "url": "packs/uz-latn-2026.json",
+      "sha256": "29973aece52399cf246ab46451abd91b74a49e7d064426ee2af3e0dfe655471d"
+    }
+  ]
+}

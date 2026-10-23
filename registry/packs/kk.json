@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "kk",
+  "name": "Қазақша — кирилл",
+  "short": "KZ · кирилл",
+  "country": "KZ",
+  "locale": "kk",
+  "version": 1,
+  "note": "Lotin alifbosi versiyasi rasmiy tasdiqlangach registry orqali alohida paket sifatida qoʻshiladi.",
+  "numberHintsRow": 1,
+  "rows": [
+    ["ә", "і", "ң", "ғ", "ү", "ұ", "қ", "ө", "һ"],
+    ["й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ"],
+    ["ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"],
+    [{"k": "@shift", "w": 1.5}, "я", "ч", "с", "м", "и", "т", "ь", "б", "ю", {"k": "@del", "w": 1.5}]
+  ],
+  "alternates": {
+    "е": ["ё"]
+  }
+}

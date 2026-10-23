@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "uz-latn-1995",
+  "name": "Oʻzbekcha — amaldagi lotin (1995)",
+  "short": "UZ · lotin",
+  "country": "UZ",
+  "locale": "uz",
+  "version": 1,
+  "note": "Oʻ va Gʻ uchun ʻ tugmasi, tutuq belgisi uchun ʼ.",
+  "rows": [
+    ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+    ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ʻ"],
+    [{"k": "@shift", "w": 1.5}, "z", "x", "c", "v", "b", "n", "m", {"k": "@del", "w": 1.5}]
+  ],
+  "bottom": [
+    {"k": "@sym", "w": 1.3},
+    {"k": "@lang", "w": 1.1},
+    "ʼ",
+    ",",
+    {"k": "@space", "w": 3.1},
+    ".",
+    {"k": "@enter", "w": 1.5}
+  ],
+  "alternates": {
+    "ʻ": ["ʼ"],
+    "ʼ": ["ʻ", "'"]
+  }
+}

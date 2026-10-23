@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "az",
+  "name": "Azərbaycanca",
+  "short": "AZ",
+  "country": "AZ",
+  "locale": "az",
+  "version": 1,
+  "rows": [
+    ["q", "ü", "e", "r", "t", "y", "u", "i", "o", "p", "ö", "ğ"],
+    ["a", "s", "d", "f", "g", "h", "j", "k", "l", "ı", "ə"],
+    [{"k": "@shift", "w": 1.5}, "z", "x", "c", "v", "b", "n", "m", "ç", "ş", {"k": "@del", "w": 1.5}]
+  ]
+}
