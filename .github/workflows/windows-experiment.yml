@@ -1,0 +1,45 @@
+name: Windows layout experiment
+
+on:
+  push:
+    branches: [claude/magical-mendel-37z1em]
+    paths: ['windows/experiment/**', '.github/workflows/windows-experiment.yml']
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download MSKLC
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri "https://download.microsoft.com/download/6/f/5/6f5ce43a-e892-4fd0-a8a1-ae7ee2f5e1fc/MSKLC.exe" -OutFile msklc.exe
+          Get-Item msklc.exe | Select-Object Length
+
+      - name: Extract
+        shell: pwsh
+        run: |
+          7z x msklc.exe -omsklc_x -y | Select-Object -Last 5
+          Get-ChildItem msklc_x -Recurse | Select-Object -First 40 FullName, Length
+          $msi = Get-ChildItem msklc_x -Recurse -Filter *.msi | Select-Object -First 1
+          Write-Host "MSI: $($msi.FullName)"
+          Start-Process msiexec.exe -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=C:\msklc" -Wait
+          Get-ChildItem C:\msklc -Recurse | Where-Object { $_.Name -match 'kbdutool|cl\.exe|link\.exe|kbd\.h|\.lib$' } | Select-Object -First 40 FullName, Length
+
+      - name: Try kbdutool
+        shell: pwsh
+        run: |
+          $kbdutool = Get-ChildItem C:\msklc -Recurse -Filter kbdutool.exe | Select-Object -First 1
+          Write-Host "kbdutool: $($kbdutool.FullName)"
+          $klc = Get-Content windows\experiment\test.klc -Raw
+          Set-Content -Path test.klc -Value $klc -Encoding Unicode
+          Push-Location $env:RUNNER_TEMP
+          Copy-Item "$PWD\..\..\test.klc" . -ErrorAction SilentlyContinue
+          Pop-Location
+          & $kbdutool.FullName -v -u -s test.klc 2>&1 | Select-Object -First 60
+          Get-ChildItem . | Select-Object Name, Length
+          dotnet --list-runtimes
+          Get-WindowsOptionalFeature -Online -FeatureName NetFx3 | Select-Object State
