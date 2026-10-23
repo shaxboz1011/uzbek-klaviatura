@@ -48,7 +48,9 @@ Ilovani oching → «1. Klaviaturani yoqish» → roʻyxatda «Alifbo Klaviatura
 - **Mavzu va urgʻu rangi**, tugma tovushi, tugma ustida harf chiqishi, ikki marta boʻsh joy — nuqta, ikki sahifali belgilar (1/2, 2/2), bir qoʻl rejimidan chiqish tugmasi.
 - **Skaner (kameradan matn)**: asboblar qatoridagi kamera tugmasi. Qogʻoz/ekrandagi bosma matnni kameraga olasiz (yoki galereyadan rasm tanlaysiz), matn telefonning oʻzida aniqlanadi (ML Kit, internetsiz — rasm hech qayoqqa yuborilmaydi), keyin tahrirlab maydonga qoʻyasiz. Oʻ/Gʻ ni toʻgʻrilash yoki yangi alifboga (Ö Ğ Ş Ç) oʻgirish, qatorlarni abzatsga birlashtirish mumkin. Hozircha lotin yozuvi (oʻzbek, ingliz, turk va h.k.); kirill va qoʻlyozma keyingi versiyalarda.
 - **Surib yozish (swipe)**: harflar ustidan barmoqni surib soʻz yozing; qoʻshimcha variantlar tepada, orqaga (⌫) bosish butun soʻzni oʻchiradi. Lugʻat: `registry/dict/<til>.txt` (en, ru — 30 000 soʻz; uz — boshlangʻich ~650 soʻz, oʻzbekcha lugʻat siz yozgan/surgan soʻzlar bilan toʻlib boradi). Yangi til uchun lugʻat qoʻshish: `tools/make_dicts.py`. en/ru lugʻati — hermitdave/FrequencyWords (CC-BY-SA 4.0).
-- **Soʻz tavsiyalari**: yozgan soʻzlaringizdan oʻrganadi. Parol, email va URL maydonlarida ishlamaydi va oʻrganmaydi.
+- **Oʻzbekcha lugʻat** (lotin va kirill): `tools/uz_lemmas_*.txt` dagi ~2 300 ta asosiy soʻzdan egalik, kelishik, koʻplik va fe'l shakllari qoida boʻyicha hosil qilinib (`python3 tools/make_uz_lexicon.py`), eng foydali 150 mingtasi ilovaga joylanadi. Soʻz tavsiyalari va surib yozish shu lugʻatdan hamda siz yozgan soʻzlardan foydalanadi. Yangi soʻz qoʻshish — tegishli faylga lemma yozib, skriptni ishga tushirish.
+- **Avto-tuzatish (sinov)**: Sozlamalarda yoqiladi. Lugʻatda yoʻq soʻz bitta xato bilan aniq bir soʻzga oʻxshasa, boʻsh joy yoki tinish belgisida tuzatiladi; darrov ⌫ bossangiz asl soʻz qaytadi va oʻrganiladi.
+- **Soʻz tavsiyalari**
 
 ## Tugmalar
 
