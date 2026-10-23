@@ -9,7 +9,19 @@ chiqarish shart emas.
 Kod yozilgan, lekin **hali kompilyatsiya qilinmagan va telefonda sinalmagan** (build muhitida Android SDK yoʻq edi).
 Alifbo paketlari (`registry/packs`) Python bilan tekshirilgan. Birinchi build'da kichik kompilyatsiya xatolari chiqishi mumkin.
 
-## APK olish (eng oson yoʻl: GitHub Actions)
+## APK olish
+
+**Tayyor versiyalar:** [Releases](../../releases) sahifasidan `Alifbo-vX.Y.Z.apk` ni yuklab oling (zip emas, toʻgʻridan-toʻgʻri APK). Yangi versiya eskisining ustiga oʻrnatiladi.
+
+### Yangi versiya chiqarish (maintainer uchun)
+
+Bir martalik sozlash — repo **Settings → Secrets and variables → Actions** ga 4 ta secret: `ANDROID_KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+Kalitni yoʻqotmang: usiz keyingi versiyalar eskisining ustiga oʻrnatilmaydi. Kalitni repoga **yuklamang**.
+
+Keyin: `git tag v1.2.0 && git push origin v1.2.0` (yoki Actions → *Release APK* → *Run workflow*). `versionCode` tegdan hisoblanadi
+(`major*10000 + minor*100 + patch`), shuning uchun versiyalar faqat oshib borishi kerak.
+
+## APK olish (GitHub Actions orqali sinov build)
 
 1. Bu papkani GitHub'ga yuklang (private repo ham boʻladi).
 2. `Actions` → `Build APK` → `Run workflow` (yoki `main` ga push qiling).
