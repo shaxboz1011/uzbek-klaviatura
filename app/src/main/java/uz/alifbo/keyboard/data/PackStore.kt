@@ -10,8 +10,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Paketlar ombori.
- *  1) ilova ichidagi boshlang'ich paketlar (assets/packs/*.json)
- *  2) serverdan yuklangan yangilari (filesDir/packs/*.json)
+ *  1) ilova ichidagi boshlang'ich paketlar (assets ichidagi packs papkasi)
+ *  2) serverdan yuklangan yangilari (filesDir ichidagi packs papkasi)
  * Bir xil id bo'lsa — versiyasi yuqorisi ustun turadi.
  */
 object PackStore {
