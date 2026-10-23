@@ -3,46 +3,40 @@ name: Windows layout experiment
 on:
   push:
     branches: [claude/magical-mendel-37z1em]
-    paths: ['windows/experiment/**', '.github/workflows/windows-experiment.yml']
+    paths: ['windows/**', '.github/workflows/windows-experiment.yml']
   workflow_dispatch:
 
 jobs:
-  msklc:
+  build:
     runs-on: windows-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install MSKLC (choco keyboard-layout-creator)
+      - name: Install MSKLC
         shell: pwsh
         timeout-minutes: 6
-        continue-on-error: true
-        run: |
-          choco install keyboard-layout-creator -y --no-progress --limit-output 2>&1 | Select-Object -Last 30
+        run: choco install keyboard-layout-creator -y --no-progress --limit-output 2>&1 | Select-Object -Last 5
 
-      - name: Inspect
+      - name: Generate KLC
         shell: pwsh
-        continue-on-error: true
-        run: |
-          $root = Get-ChildItem "C:\Program Files (x86)" -Directory -Filter "Microsoft Keyboard Layout Creator*" | Select-Object -First 1
-          Write-Host "ROOT: $($root.FullName)"
-          Get-ChildItem $root.FullName -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object -First 80 @{n='p';e={$_.FullName.Replace($root.FullName,'')}}, Length | Format-Table -AutoSize | Out-String -Width 200
+        run: python windows/make_klc.py work
 
-      - name: Run kbdutool on test layout
+      - name: kbdutool usage + build
         shell: pwsh
         timeout-minutes: 3
         continue-on-error: true
         run: |
-          $root = Get-ChildItem "C:\Program Files (x86)" -Directory -Filter "Microsoft Keyboard Layout Creator*" | Select-Object -First 1
-          $kbdutool = Get-ChildItem $root.FullName -Recurse -Filter kbdutool.exe | Select-Object -First 1
-          Write-Host "kbdutool: $($kbdutool.FullName)"
-          New-Item -ItemType Directory -Force -Path work | Out-Null
-          Copy-Item windows\experiment\test.klc work\testuz.klc
-          # KLC UTF-16LE (BOM)
-          $t = Get-Content work\testuz.klc -Raw -Encoding UTF8
-          [IO.File]::WriteAllText("$PWD\work\testuz.klc", $t, [Text.Encoding]::Unicode)
+          $root = "C:\Program Files (x86)\Microsoft Keyboard Layout Creator 1.4"
+          $env:PATH = "$root\bin\i386;" + $env:PATH
+          $env:INCLUDE = "$root\inc"
+          Write-Host "--- usage ---"
+          & kbdutool.exe 2>&1 | Select-Object -First 40
+          Write-Host "--- /? ---"
+          & kbdutool.exe /? 2>&1 | Select-Object -First 40
           Push-Location work
-          & $kbdutool.FullName -v -u -s testuz.klc 2>&1 | Select-Object -First 80
+          Write-Host "--- build -u -s ---"
+          & kbdutool.exe -v -w -u -s alifbo26.klc 2>&1 | Select-Object -First 80
           Write-Host "exit: $LASTEXITCODE"
           Get-ChildItem -Recurse | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 200
           Pop-Location
