@@ -1,0 +1,67 @@
+name: Windows layout
+
+# Windows klaviatura sxemasi: KLC -> DLL (MSKLC) -> oʻrnatuvchi (Inno Setup) -> haqiqiy oʻrnatib tekshirish.
+on:
+  push:
+    branches: [main]
+    paths: ['windows/**', '.github/workflows/windows.yml']
+  workflow_dispatch:
+  # sinov: ishchi branch
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+        default: '0.0.0'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MSKLC and Inno Setup
+        shell: pwsh
+        timeout-minutes: 8
+        run: |
+          choco install keyboard-layout-creator innosetup -y --no-progress --limit-output 2>&1 | Select-Object -Last 4
+
+      - name: Build DLLs
+        shell: pwsh
+        run: windows\build.ps1 -Out windows\out
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $v = "${{ inputs.version }}"
+          if (-not $v) { $v = "0.0.0" }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$v" windows\installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC xato" }
+          Get-ChildItem windows\out\*.exe | Select-Object Name, Length
+
+      - name: Install (silent) and verify with Windows APIs
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $setup = (Get-ChildItem windows\out\Alifbo-Windows-Setup-v*.exe | Select-Object -First 1).FullName
+          Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          if (-not (Test-Path "$env:SystemRoot\System32\alifbo26.dll")) { throw "DLL System32 da yoʻq" }
+          if (-not (Test-Path "$env:SystemRoot\SysWOW64\alifbo26.dll")) { throw "DLL SysWOW64 da yoʻq" }
+          windows\test_layout.ps1
+
+      - name: Uninstall (silent) and verify cleanup
+        shell: pwsh
+        timeout-minutes: 3
+        run: |
+          $u = Get-ChildItem "$env:ProgramData\Alifbo\Uninstall\unins*.exe" | Select-Object -First 1
+          Start-Process $u.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
+          Start-Sleep -Seconds 2
+          if (Test-Path "$env:SystemRoot\System32\alifbo26.dll") { throw "DLL oʻchirilmadi" }
+          if (Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\a0260443') { throw "Reestr kaliti oʻchirilmadi" }
+          Write-Host "Tozalash OK"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alifbo-windows
+          path: windows/out/Alifbo-Windows-Setup-v*.exe

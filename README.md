@@ -1,6 +1,6 @@
-# Alifbo Klaviatura (Android)
+# Alifbo Klaviatura — Android va Windows
 
-Android uchun klaviatura (IME). Yangi oʻzbek lotin alifbosi (Ş Ç Ö Ğ ʼ), eski lotin, kirill va boshqa tillar.
+Android uchun klaviatura (IME) va **Windows 10/11 uchun tizim darajasidagi klaviatura sxemasi** ([windows/README.md](windows/README.md)). Yangi oʻzbek lotin alifbosi (Ş Ç Ö Ğ ʼ), eski lotin, kirill va boshqa tillar.
 Alifbolar **JSON paketlari** sifatida saqlanadi va **serverdan yangilanadi** — alifbo oʻzgarsa, ilovani qayta
 chiqarish shart emas.
 

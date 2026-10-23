@@ -115,51 +115,9 @@ class SettingsActivity : Activity() {
         packsBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(packsBox)
 
-        root.addView(section("Klaviatura"))
-        root.addView(CheckBox(this).apply {
-            text = "Tugma bosilganda tebranish"
-            isChecked = prefs.haptic
-            setOnCheckedChangeListener { _, on -> prefs.haptic = on }
-        })
-        root.addView(CheckBox(this).apply {
-            text = "Tugma bosilganda harfni tepada koʻrsatish"
-            isChecked = prefs.keyPreview
-            setOnCheckedChangeListener { _, on -> prefs.keyPreview = on }
-        })
-        root.addView(CheckBox(this).apply {
-            text = "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)"
-            isChecked = prefs.swipe
-            setOnCheckedChangeListener { _, on -> prefs.swipe = on }
-        })
-        root.addView(CheckBox(this).apply {
-            text = "Tugma bosilganda tovush"
-            isChecked = prefs.sound
-            setOnCheckedChangeListener { _, on -> prefs.sound = on }
-        })
-        root.addView(CheckBox(this).apply {
-            text = "Ikki marta boʻsh joy — nuqta va boʻsh joy"
-            isChecked = prefs.doubleSpacePeriod
-            setOnCheckedChangeListener { _, on -> prefs.doubleSpacePeriod = on }
-        })
-        root.addView(CheckBox(this).apply {
-            text = "Doimiy raqamlar qatori"
-            isChecked = prefs.numberRow
-            setOnCheckedChangeListener { _, on -> prefs.numberRow = on }
-        })
-        root.addView(CheckBox(this).apply {
-            text = "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)"
-            isChecked = prefs.suggestions
-            setOnCheckedChangeListener { _, on -> prefs.suggestions = on }
-        })
-        root.addView(button("Oʻrganilgan soʻzlarni oʻchirish") {
-            Predictor.clear(this)
-            Toast.makeText(this, "Oʻchirildi", Toast.LENGTH_SHORT).show()
-        })
-        root.addView(button("Bufer tarixini oʻchirish") {
-            ClipStore.clearAll(this)
-            Toast.makeText(this, "Oʻchirildi", Toast.LENGTH_SHORT).show()
-        })
+        // ---- Koʻrinish ----
         root.addView(section("Koʻrinish"))
+        root.addView(body("Mavzu"))
         root.addView(RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
             val names = listOf("Tizim", "Och", "Toʻq")
@@ -198,18 +156,54 @@ class SettingsActivity : Activity() {
             }
             paint()
         })
-        root.addView(body("Balandlik"))
-        root.addView(SeekBar(this).apply {
-            max = 50
-            progress = prefs.heightPercent - 80
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
-                    if (fromUser) prefs.heightPercent = 80 + p
-                }
+        slider(root, "Klaviatura balandligi", 80, 130, prefs.heightPercent, { "$it%" }) { prefs.heightPercent = it }
+        slider(root, "Tugma burchaklari (0 — toʻgʻri burchak)", 0, 18, prefs.keyRadius, { "$it" }) { prefs.keyRadius = it }
+        slider(root, "Tugmalar orasidagi masofa", 1, 6, prefs.keyGap, { "$it" }) { prefs.keyGap = it }
+        slider(root, "Harf oʻlchami", 80, 130, prefs.textScale, { "$it%" }) { prefs.textScale = it }
+        slider(root, "Pastdan qoʻshimcha boʻsh joy", 0, 32, prefs.bottomPad, { "$it dp" }) { prefs.bottomPad = it }
+        switchRow(root, "Tugma ostidagi soya", prefs.keyShadow) { prefs.keyShadow = it }
+        switchRow(root, "Doimiy raqamlar qatori", prefs.numberRow) { prefs.numberRow = it }
 
-                override fun onStartTrackingTouch(sb: SeekBar) {}
-                override fun onStopTrackingTouch(sb: SeekBar) {}
-            })
+        // ---- Yozish ----
+        root.addView(section("Yozish"))
+        switchRow(root, "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)", prefs.swipe) { prefs.swipe = it }
+        switchRow(root, "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)", prefs.suggestions) { prefs.suggestions = it }
+        switchRow(root, "Gap boshida avtomatik bosh harf", prefs.autoCap) { prefs.autoCap = it }
+        switchRow(root, "Ikki marta boʻsh joy — nuqta va boʻsh joy", prefs.doubleSpacePeriod) { prefs.doubleSpacePeriod = it }
+        switchRow(root, "Tugma bosilganda harfni tepada koʻrsatish", prefs.keyPreview) { prefs.keyPreview = it }
+        slider(root, "Uzoq bosish kechikishi", 150, 600, prefs.longPressMs, { "$it ms" }) { prefs.longPressMs = it }
+        slider(root, "Boʻsh joyni surib kursorni siljitish (kichik — sezgirroq)", 8, 32, prefs.cursorStep, { "$it dp" }) { prefs.cursorStep = it }
+
+        // ---- Tovush va tebranish ----
+        root.addView(section("Tovush va tebranish"))
+        switchRow(root, "Tugma bosilganda tovush", prefs.sound) { prefs.sound = it }
+        slider(root, "Tovush balandligi (media ovozi bilan)", 5, 100, prefs.soundVolume, { "$it%" }) { prefs.soundVolume = it }
+        switchRow(root, "Tugma bosilganda tebranish", prefs.haptic) { prefs.haptic = it }
+        slider(root, "Tebranish kuchi (0 — tizim standarti)", 0, 40, prefs.hapticMs, { if (it == 0) "standart" else "$it ms" }) { prefs.hapticMs = it }
+
+        // ---- Asboblar qatori ----
+        root.addView(section("Asboblar qatori"))
+        val toolNames = listOf("Emoji", "Tarjima", "Bufer", "Ovozli kiritish", "Sozlamalar")
+        for ((i, n) in toolNames.withIndex()) {
+            switchRow(root, n, ((prefs.toolsMask shr i) and 1) == 1) { on ->
+                prefs.toolsMask = if (on) prefs.toolsMask or (1 shl i) else prefs.toolsMask and (1 shl i).inv()
+            }
+        }
+        root.addView(body("«…» tugmasi doim koʻrinadi."))
+
+        // ---- Maxfiylik ----
+        root.addView(section("Maxfiylik va tozalash"))
+        root.addView(button("Oʻrganilgan soʻzlarni oʻchirish") {
+            Predictor.clear(this)
+            Toast.makeText(this, "Oʻchirildi", Toast.LENGTH_SHORT).show()
+        })
+        root.addView(button("Bufer tarixini oʻchirish") {
+            ClipStore.clearAll(this)
+            Toast.makeText(this, "Oʻchirildi", Toast.LENGTH_SHORT).show()
+        })
+        root.addView(button("Koʻrinish va sezgirlik sozlamalarini tiklash") {
+            prefs.resetStyle()
+            recreate()
         })
 
         root.addView(section("Yangilanishlar"))
@@ -363,6 +357,37 @@ class SettingsActivity : Activity() {
     }
 
     // ---- kichik UI yordamchilari ----
+
+    private fun switchRow(parent: LinearLayout, label: String, value: Boolean, onChange: (Boolean) -> Unit) {
+        parent.addView(CheckBox(this).apply {
+            text = label
+            isChecked = value
+            setOnCheckedChangeListener { _, on -> onChange(on) }
+        })
+    }
+
+    /** Qiymati koʻrinib turadigan slayder (min..max). */
+    private fun slider(
+        parent: LinearLayout, label: String, min: Int, max: Int, value: Int,
+        fmt: (Int) -> String, onChange: (Int) -> Unit
+    ) {
+        val t = body("$label: ${fmt(value)}")
+        parent.addView(t)
+        parent.addView(SeekBar(this).apply {
+            this.max = max - min
+            progress = value.coerceIn(min, max) - min
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar, p: Int, fromUser: Boolean) {
+                    val v = min + p
+                    t.text = "$label: ${fmt(v)}"
+                    if (fromUser) onChange(v)
+                }
+
+                override fun onStartTrackingTouch(sb: SeekBar) {}
+                override fun onStopTrackingTouch(sb: SeekBar) {}
+            })
+        })
+    }
 
     private fun title(t: String) = TextView(this).apply {
         text = t

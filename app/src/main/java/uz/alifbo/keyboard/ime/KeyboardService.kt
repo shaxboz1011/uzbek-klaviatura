@@ -34,6 +34,32 @@ class KeyboardService : InputMethodService(),
     private var builtTheme = ""
     private var secretField = false
     private var swipeWord: String? = null
+    private var swipeAllowed = true
+
+    // Sozlamalar oʻzgarsa, klaviatura yopilmasdan darrov qoʻllanadi (Sozlamalar ichida sinab koʻrish uchun).
+    private val liveKeys = setOf(
+        "keyRadius", "keyGap", "textScale", "keyShadow", "bottomPad", "hapticMs", "longPressMs", "cursorStep",
+        "autoCap", "toolsMask", "theme", "accent", "height", "soundVol", "sound", "haptic", "keyPreview",
+        "numberRow", "swipe", "oneHanded"
+    )
+    private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key in liveKeys) applyLive()
+    }
+
+    /** Barcha sozlamalarni koʻrinishga qoʻllaydi (mavzu/urgʻu oʻzgargan boʻlsa, koʻrinishni qayta quradi). */
+    private fun applyLive() {
+        if (root != null && builtTheme != themeSig()) setInputView(onCreateInputView())
+        val r = root ?: return
+        r.reloadColors()
+        r.strip.setToolsMask(prefs.toolsMask)
+        val v = r.keyboard
+        v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+        v.setSoundVolume(prefs.soundVolume)
+        v.applyStyle(prefs)
+        v.setNumberRow(prefs.numberRow)
+        v.setOneHanded(prefs.oneHanded)
+        v.setSwipeEnabled(prefs.swipe && swipeAllowed)
+    }
 
     private var suggestOn = true
     private var learnOn = true
@@ -70,11 +96,13 @@ class KeyboardService : InputMethodService(),
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
+        prefs.registerListener(prefListener)
         PackStore.addListener(storeListener)
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).addPrimaryClipChangedListener(clipListener)
     }
 
     override fun onDestroy() {
+        prefs.unregisterListener(prefListener)
         PackStore.removeListener(storeListener)
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipListener)
         Predictor.save(this)
@@ -110,18 +138,12 @@ class KeyboardService : InputMethodService(),
         val sig = prefs.enabledIds.joinToString(",")
         if (loadedGen != PackStore.generation || loadedSig != sig) reloadPacks()
 
-        if (builtTheme != themeSig()) {
-            setInputView(onCreateInputView())
-        }
+        swipeAllowed = !isSecretField(info)
+        applyLive()
         val r = root ?: return
-        r.reloadColors()
         r.showPanel(KeyboardRoot.KEYBOARD)
         captureClip(false)
         val v = r.keyboard
-        v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
-        v.setNumberRow(prefs.numberRow)
-        v.setOneHanded(prefs.oneHanded)
-        v.setSwipeEnabled(prefs.swipe && !isSecretField(info))
 
         val secret = isSecretField(info)
         secretField = secret
@@ -366,12 +388,8 @@ class KeyboardService : InputMethodService(),
                 return
             }
             MorePanel.THEME -> {
-                prefs.theme = (prefs.theme + 1) % 3
-                setInputView(onCreateInputView())
+                prefs.theme = (prefs.theme + 1) % 3 // sozlama oʻzgarishi koʻrinishni qayta quradi (applyLive)
                 val nr = root ?: return
-                nr.keyboard.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
-                nr.keyboard.setNumberRow(prefs.numberRow)
-                nr.keyboard.setOneHanded(prefs.oneHanded)
                 nr.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
                 nr.showPanel(KeyboardRoot.MORE)
                 return
@@ -379,6 +397,8 @@ class KeyboardService : InputMethodService(),
             MorePanel.SOUND -> {
                 prefs.sound = !prefs.sound
                 r.keyboard.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
+                r.keyboard.setSoundVolume(prefs.soundVolume)
+                if (prefs.sound) r.keyboard.previewClick()
                 r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
                 return
             }

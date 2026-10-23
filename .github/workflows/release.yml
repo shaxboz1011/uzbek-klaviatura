@@ -1,9 +1,9 @@
-name: Release APK
+name: Release
 
-# Yangi versiya chiqarish:
-#   1) git tag v1.2.0 && git push origin v1.2.0
-#   yoki  2) Actions → "Release APK" → Run workflow → version: 1.2.0
-# Natija: GitHub Releases'da  Alifbo-v1.2.0.apk
+# Yangi versiya chiqarish (Android APK + Windows klaviatura oʻrnatuvchisi bir relizda):
+#   1) git tag v1.3.0 && git push origin v1.3.0
+#   yoki  2) Actions → "Release" → Run workflow → version: 1.3.0
+# Natija: GitHub Releases'da  Alifbo-v1.3.0.apk  va  Alifbo-Windows-Setup-v1.3.0.exe
 
 on:
   push:
@@ -11,18 +11,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versiya (masalan 1.2.0)'
+        description: 'Versiya (masalan 1.3.0)'
         required: true
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-
       - name: Versiyani aniqlash
         id: v
         run: |
@@ -36,6 +36,12 @@ jobs:
             echo "::error::Versiya X.Y.Z koʻrinishida boʻlishi kerak (hozir: '$V')"; exit 1
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Imzo kaliti borligini tekshirish
         env:
@@ -70,22 +76,52 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           gradle :app:assembleRelease --no-daemon \
-            -PversionName=${{ steps.v.outputs.version }} \
+            -PversionName=${{ needs.version.outputs.version }} \
             -PgithubRepo=${{ github.repository }} -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json
-          cp app/build/outputs/apk/release/*.apk "Alifbo-v${{ steps.v.outputs.version }}.apk"
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk "dist/Alifbo-v${{ needs.version.outputs.version }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alifbo-android
+          path: dist/*.apk
+
+  windows:
+    needs: version
+    uses: ./.github/workflows/windows.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  publish:
+    needs: [version, android, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Fayllar
+        run: ls -la dist
 
       - name: GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.v.outputs.version }}
+          tag_name: v${{ needs.version.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: Alifbo v${{ steps.v.outputs.version }}
+          name: Alifbo v${{ needs.version.outputs.version }}
           generate_release_notes: true
-          files: Alifbo-v${{ steps.v.outputs.version }}.apk
+          files: dist/*
           body: |
-            ## Oʻrnatish
-            1. Pastdagi **Alifbo-v${{ steps.v.outputs.version }}.apk** ni telefonga yuklab oling va oching.
-            2. «Noma'lum manbalardan oʻrnatish» ruxsatini bering (Samsung'da Auto Blocker yoqiq boʻlsa, uni oʻchiring).
+            ## Android
+            1. **Alifbo-v${{ needs.version.outputs.version }}.apk** ni telefonga yuklab oling va oching.
+            2. «Notanish manbalardan oʻrnatish» ruxsatini bering (Samsung'da Auto Blocker yoqiq boʻlsa, oʻchiring).
             3. Ilovani oching → «Klaviaturani yoqish» → «Klaviaturani tanlash».
 
-            Yangi versiya eskisining ustiga oʻrnatiladi, sozlamalar saqlanadi.
+            Yangi versiya eskisining ustiga oʻrnatiladi, sozlamalar saqlanadi (ilova ichidan ham yangilash mumkin).
+
+            ## Windows 10 / 11
+            1. **Alifbo-Windows-Setup-v${{ needs.version.outputs.version }}.exe** ni yuklab, ishga tushiring (administrator ruxsati kerak).
+            2. `Win + Boʻsh joy` bilan «Uzbek (Latin 2026) - Alifbo» ni tanlang.
+
+            Windows sxemasi tizim darajasida ishlaydi (fonda hech qanday dastur ishlamaydi). Batafsil: [windows/README.md](https://github.com/${{ github.repository }}/blob/main/windows/README.md)
