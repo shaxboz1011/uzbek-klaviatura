@@ -11,6 +11,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import uz.alifbo.keyboard.data.Autocorrect
 import uz.alifbo.keyboard.data.ClipStore
 import uz.alifbo.keyboard.data.LayoutPack
 import uz.alifbo.keyboard.data.LexiconStore
@@ -36,6 +37,10 @@ class KeyboardService : InputMethodService(),
     private var secretField = false
     private var swipeWord: String? = null
     private var swipeAllowed = true
+
+    /** Oxirgi avto-tuzatish: orqaga (⌫) bosilsa asl soʻz tiklanadi. */
+    private class Fix(val original: String, val fixed: String, val sep: String)
+    private var lastFix: Fix? = null
 
     // Sozlamalar oʻzgarsa, klaviatura yopilmasdan darrov qoʻllanadi (Sozlamalar ichida sinab koʻrish uchun).
     private val liveKeys = setOf(
@@ -479,6 +484,26 @@ class KeyboardService : InputMethodService(),
         root?.keyboard?.setOneHanded(0)
     }
 
+    /** Ajratuvchi (boʻsh joy/tinish belgisi) yozilganda, tugagan soʻzni kerak boʻlsa tuzatadi. true — matn yozildi. */
+    private fun autocorrect(ic: android.view.inputmethod.InputConnection, sep: String): Boolean {
+        lastFix = null
+        if (!prefs.autoCorrect || !suggestOn || secretField) return false
+        if (sep.length != 1 || !(sep[0].isWhitespace() || sep[0] in ".,!?;:)")) return false
+        val before = ic.getTextBeforeCursor(40, 0) ?: return false
+        val cur = trailingWord(before)
+        if (cur.isEmpty()) return false
+        val lex = currentLexicon() ?: return false
+        val known = Predictor.snapshot(this)
+        val fixed = Autocorrect.correct(cur, lex) { it in known } ?: return false
+        val out = Autocorrect.matchCase(cur, fixed)
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(cur.length, 0)
+        ic.commitText(out + sep, 1)
+        ic.endBatchEdit()
+        lastFix = Fix(cur, out, sep)
+        return true
+    }
+
     override fun onSwipe(words: List<String>) {
         val ic = currentInputConnection ?: return
         val best = words.firstOrNull() ?: return
@@ -494,6 +519,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onText(text: String) {
         swipeWord = null
+        if (text != " " && text.length > 0 && text[0].isLetter()) lastFix = null
         val ic = currentInputConnection
         if (text == " " && prefs.doubleSpacePeriod && !secretField && ic != null) {
             // Ikki marta boʻsh joy: "soʻz " + " " -> "soʻz. "
@@ -508,6 +534,11 @@ class KeyboardService : InputMethodService(),
                 return
             }
         }
+        if (ic != null && autocorrect(ic, text)) {
+            refreshSuggestions(true)
+            updateShift()
+            return
+        }
         ic?.commitText(text, 1)
         val last = text.lastOrNull()
         val boundary = last != null && !(last.isLetter() || last == 'ʻ' || last == 'ʼ' || last == '\'')
@@ -516,6 +547,23 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onDelete() {
+        val fx = lastFix
+        if (fx != null) {
+            lastFix = null
+            val ic = currentInputConnection
+            val tail = ic?.getTextBeforeCursor(fx.fixed.length + fx.sep.length, 0)?.toString()
+            if (ic != null && tail == fx.fixed + fx.sep) {
+                // Tuzatishni bekor qilamiz: asl soʻzni qaytaramiz va uni oʻrganamiz (qayta tuzatilmasligi uchun).
+                ic.beginBatchEdit()
+                ic.deleteSurroundingText(fx.fixed.length + fx.sep.length, 0)
+                ic.commitText(fx.original, 1)
+                ic.endBatchEdit()
+                Predictor.learn(this, fx.original)
+                refreshSuggestions(false)
+                updateShift()
+                return
+            }
+        }
         val sw = swipeWord
         if (sw != null) {
             swipeWord = null

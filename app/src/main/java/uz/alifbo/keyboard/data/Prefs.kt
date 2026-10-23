@@ -79,6 +79,13 @@ class Prefs(context: Context) {
             sp.edit().putString("updNotified", v).apply()
         }
 
+    /** Avto-tuzatish (sinov): soʻz tugaganda xato yozilgan soʻzni lugʻatdagi yaqin soʻzga almashtiradi. */
+    var autoCorrect: Boolean
+        get() = sp.getBoolean("autoCorrect", false)
+        set(v) {
+            sp.edit().putBoolean("autoCorrect", v).apply()
+        }
+
     /** Surib yozish (swipe). */
     var swipe: Boolean
         get() = sp.getBoolean("swipe", true)

@@ -15,7 +15,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "registry" / "dict"
-MAXN = 120000
+MAXN = 150000
 
 OKINA = "ʻ"   # ʻ  (oʻ, gʻ)
 TUTUQ = "ʼ"   # ʼ  (tutuq)

@@ -168,6 +168,7 @@ class SettingsActivity : Activity() {
         root.addView(section("Yozish"))
         switchRow(root, "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)", prefs.swipe) { prefs.swipe = it }
         switchRow(root, "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)", prefs.suggestions) { prefs.suggestions = it }
+        switchRow(root, "Avto-tuzatish (sinov): xato yozilgan soʻzni tuzatadi; ⌫ — bekor qilish", prefs.autoCorrect) { prefs.autoCorrect = it }
         switchRow(root, "Gap boshida avtomatik bosh harf", prefs.autoCap) { prefs.autoCap = it }
         switchRow(root, "Ikki marta boʻsh joy — nuqta va boʻsh joy", prefs.doubleSpacePeriod) { prefs.doubleSpacePeriod = it }
         switchRow(root, "Tugma bosilganda harfni tepada koʻrsatish", prefs.keyPreview) { prefs.keyPreview = it }

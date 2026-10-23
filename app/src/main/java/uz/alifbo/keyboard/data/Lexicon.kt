@@ -8,8 +8,10 @@ import java.util.concurrent.ConcurrentHashMap
  * Fayllar: assets/dict/<til>.txt  (soʻz<TAB>chastota; chastota boʻlmasa — tartib raqami).
  * Oʻzbekcha lugʻat «kanonik» (1995 lotin: oʻ, gʻ, sh, ch) shaklda saqlanadi va paket alifbosiga moslab oʻgiriladi.
  */
-class Lexicon(val byFirst: Map<Char, List<Entry>>) {
+class Lexicon(val byFirst: Map<Char, List<Entry>>, private val index: Set<String> = emptySet()) {
     class Entry(val word: String, val prior: Float)
+
+    fun contains(w: String) = w in index
 }
 
 object LexiconStore {
@@ -88,6 +90,6 @@ object LexiconStore {
         for ((w, pr) in words) by.getOrPut(w[0]) { ArrayList() }.add(Lexicon.Entry(w, pr))
         // Har bir guruh chastota boʻyicha kamayish tartibida: tavsiya berishda birinchi mos kelganlari eng yaxshisi.
         for (l in by.values) l.sortByDescending { it.prior }
-        return Lexicon(by)
+        return Lexicon(by, HashSet(words.keys))
     }
 }
