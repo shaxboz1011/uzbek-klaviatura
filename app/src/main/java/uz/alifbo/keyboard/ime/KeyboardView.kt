@@ -14,10 +14,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowInsets
+import kotlin.math.hypot
 import uz.alifbo.keyboard.R
 import uz.alifbo.keyboard.data.DefaultLayers
 import uz.alifbo.keyboard.data.KeySpec
 import uz.alifbo.keyboard.data.LayoutPack
+import uz.alifbo.keyboard.data.Lexicon
+import uz.alifbo.keyboard.data.LexiconStore
 import java.util.Locale
 
 /**
@@ -35,7 +38,12 @@ class KeyboardView(context: Context) : View(context) {
         fun onLangPicker()
         fun onCursor(dir: Int)
         fun onExitOneHanded()
+        /** Surib yozish natijasi: birinchisi — eng yaxshi nomzod. */
+        fun onSwipe(words: List<String>)
     }
+
+    /** Surib yozish uchun oʻrganilgan soʻzlar. */
+    var learnedWords: (() -> Map<String, Int>)? = null
 
     var listener: Listener? = null
 
@@ -53,6 +61,13 @@ class KeyboardView(context: Context) : View(context) {
         var altIndex = 0
         var consumed = false
         var longRun: Runnable? = null
+        var track = false
+        var swipe = false
+        var xs = FloatArray(512)
+        var ys = FloatArray(512)
+        var np = 0
+        var sx = 0f
+        var sy = 0f
         var repRun: Runnable? = null
     }
 
@@ -68,6 +83,7 @@ class KeyboardView(context: Context) : View(context) {
     private var heightScale = 1f
     private var keyPreview = true
     private var sound = false
+    private var swipeOn = true
     private var symPage = 0
     private var audio: AudioManager? = null
     private var bottomInset = 0
@@ -152,6 +168,10 @@ class KeyboardView(context: Context) : View(context) {
         if (numberRow == on) return
         numberRow = on
         refreshRows()
+    }
+
+    fun setSwipeEnabled(on: Boolean) {
+        swipeOn = on
     }
 
     fun setOneHanded(mode: Int) {
@@ -383,6 +403,21 @@ class KeyboardView(context: Context) : View(context) {
             }
         }
 
+        // Surib yozish izi
+        for (i in 0 until ptrs.size()) {
+            val p = ptrs.valueAt(i)
+            if (!p.swipe || p.np < 2) continue
+            path.reset()
+            path.moveTo(p.xs[0], p.ys[0])
+            for (j in 1 until p.np) path.lineTo(p.xs[j], p.ys[j])
+            paintIcon.style = Paint.Style.STROKE
+            paintIcon.color = (colAccent and 0x00FFFFFF) or 0xB0000000.toInt()
+            val w = paintIcon.strokeWidth
+            paintIcon.strokeWidth = dp(5f)
+            c.drawPath(path, paintIcon)
+            paintIcon.strokeWidth = w
+        }
+
         // Bir qo'l rejimi: bo'sh tomondagi tugma — oddiy rejimga qaytaradi
         if (oneHanded != 0) {
             val fullW = width - 2 * dp(3f)
@@ -401,7 +436,7 @@ class KeyboardView(context: Context) : View(context) {
             for (i in 0 until ptrs.size()) {
                 val p = ptrs.valueAt(i)
                 val k = p.key ?: continue
-                if (p.alts != null || k.spec.isToken || k.row == 0) continue
+                if (p.alts != null || p.swipe || k.spec.isToken || k.row == 0) continue
                 val t = if (shift != 0 && !symbols) k.spec.label.uppercase(caseLocale) else k.spec.label
                 val r = k.rect
                 val bw = maxOf(r.width(), dp(48f))
@@ -574,6 +609,12 @@ class KeyboardView(context: Context) : View(context) {
         p.key = k
         p.x = x
         p.anchor = x
+        if (swipeOn && !symbols && !k.spec.isToken && k.spec.label.length == 1 && k.spec.label[0].isLetter()) {
+            p.track = true
+            p.sx = x
+            p.sy = y
+            addPoint(p, x, y)
+        }
         ptrs.put(id, p)
         if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         if (sound) playClick(k.spec.label)
@@ -671,6 +712,20 @@ class KeyboardView(context: Context) : View(context) {
         }
         val cur = p.key ?: return
 
+        if (p.track) {
+            addPoint(p, x, y)
+            if (!p.swipe && hypot(x - p.sx, y - p.sy) > maxOf(cur.rect.width(), dp(40f))) {
+                p.swipe = true
+                p.consumed = true
+                disarm(p)
+                invalidate()
+            }
+            if (p.swipe) {
+                invalidate()
+                return
+            }
+        }
+
         // Bo'sh joy ustida surish — kursorni siljitish
         if (cur.spec.label == "@space") {
             val step = dp(16f)
@@ -710,12 +765,51 @@ class KeyboardView(context: Context) : View(context) {
         disarm(p)
         val alts = p.alts
         val k = p.key
-        if (alts != null) {
+        if (p.swipe) {
+            finishSwipe(p)
+        } else if (alts != null) {
             commit(alts[p.altIndex.coerceIn(0, alts.size - 1)])
         } else if (k != null && !p.consumed) {
             fire(k.spec)
         }
         invalidate()
+    }
+
+    private fun addPoint(p: Ptr, x: Float, y: Float) {
+        if (p.np > 0 && hypot(x - p.xs[p.np - 1], y - p.ys[p.np - 1]) < dp(2f)) return
+        if (p.np == p.xs.size) {
+            p.xs = p.xs.copyOf(p.np * 2)
+            p.ys = p.ys.copyOf(p.np * 2)
+        }
+        p.xs[p.np] = x
+        p.ys[p.np] = y
+        p.np++
+    }
+
+    private fun finishSwipe(p: Ptr) {
+        val pk = pack ?: return
+        val centers = HashMap<Char, FloatArray>()
+        var w = 0f
+        for (k in keys) {
+            val l = k.spec.label
+            if (k.spec.isToken || l.length != 1 || !l[0].isLetter()) continue
+            centers[l[0].lowercaseChar()] = floatArrayOf(k.rect.centerX(), k.rect.centerY())
+            if (w == 0f) w = k.rect.width()
+        }
+        val learned = learnedWords?.invoke() ?: emptyMap()
+        var words = SwipeDecoder.decode(p.xs, p.ys, p.np, centers, w, LexiconStore.get(pk), learned, 3)
+        if (words.isEmpty()) return
+        val loc = caseLocale
+        words = when (shift) {
+            2 -> words.map { it.uppercase(loc) }
+            1 -> words.map { it.replaceFirstChar { c -> c.uppercase(loc) } }
+            else -> words
+        }
+        if (shift == 1) {
+            shift = 0
+            invalidate()
+        }
+        listener?.onSwipe(words)
     }
 
     private fun cancelAll() {

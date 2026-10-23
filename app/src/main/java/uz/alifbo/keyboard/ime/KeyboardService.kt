@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import uz.alifbo.keyboard.data.ClipStore
 import uz.alifbo.keyboard.data.LayoutPack
+import uz.alifbo.keyboard.data.LexiconStore
 import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
@@ -32,6 +33,7 @@ class KeyboardService : InputMethodService(),
     private var loadedSig = ""
     private var builtTheme = ""
     private var secretField = false
+    private var swipeWord: String? = null
 
     private var suggestOn = true
     private var learnOn = true
@@ -74,6 +76,7 @@ class KeyboardService : InputMethodService(),
         builtTheme = themeSig()
         val r = KeyboardRoot(Theme.themed(this, prefs.theme))
         r.keyboard.listener = this
+        r.keyboard.learnedWords = { if (learnOn) Predictor.snapshot(this) else emptyMap() }
         r.strip.listener = this
         r.emoji.listener = this
         r.clip.listener = this
@@ -108,12 +111,14 @@ class KeyboardService : InputMethodService(),
         v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
         v.setNumberRow(prefs.numberRow)
         v.setOneHanded(prefs.oneHanded)
+        v.setSwipeEnabled(prefs.swipe && !isSecretField(info))
 
         val secret = isSecretField(info)
         secretField = secret
         suggestOn = prefs.suggestions && !secret
         learnOn = suggestOn && (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
         prevWord = ""
+        swipeWord = null
         r.strip.setSuggestions(emptyList())
 
         when (info.inputType and InputType.TYPE_MASK_CLASS) {
@@ -164,7 +169,12 @@ class KeyboardService : InputMethodService(),
         loadedSig = enabled.joinToString(",")
         val cur = prefs.currentId
         val p = list.firstOrNull { it.id == cur } ?: list.firstOrNull() ?: return
+        applyPack(p)
+    }
+
+    private fun applyPack(p: LayoutPack) {
         root?.keyboard?.setPack(p)
+        LexiconStore.loadAsync(this, p) {}
     }
 
     private fun enterLabelFor(info: EditorInfo): String? {
@@ -214,6 +224,21 @@ class KeyboardService : InputMethodService(),
 
     override fun onSuggestion(text: String) {
         val ic = currentInputConnection ?: return
+        val sw = swipeWord
+        if (sw != null) {
+            swipeWord = null
+            val tail = ic.getTextBeforeCursor(sw.length + 1, 0)?.toString()
+            if (tail == "$sw ") {
+                ic.beginBatchEdit()
+                ic.deleteSurroundingText(sw.length + 1, 0)
+                ic.commitText("$text ", 1)
+                ic.endBatchEdit()
+                if (learnOn) Predictor.learn(this, text)
+                root?.strip?.setSuggestions(emptyList())
+                updateShift()
+                return
+            }
+        }
         val before = ic.getTextBeforeCursor(40, 0) ?: ""
         val cur = trailingWord(before)
         val out = if (cur.isNotEmpty() && cur[0].isUpperCase()) text.replaceFirstChar { it.uppercase() } else text
@@ -413,7 +438,21 @@ class KeyboardService : InputMethodService(),
         root?.keyboard?.setOneHanded(0)
     }
 
+    override fun onSwipe(words: List<String>) {
+        val ic = currentInputConnection ?: return
+        val best = words.firstOrNull() ?: return
+        val b = ic.getTextBeforeCursor(1, 0)
+        val lead = if (!b.isNullOrEmpty() && (b[0].isLetterOrDigit() || b[0] in ".,!?:;)")) " " else ""
+        ic.commitText("$lead$best ", 1)
+        if (learnOn) Predictor.learn(this, best.lowercase())
+        updateShift()
+        prevWord = ""
+        swipeWord = best
+        root?.strip?.setSuggestions(if (words.size > 1 && suggestOn) words else emptyList())
+    }
+
     override fun onText(text: String) {
+        swipeWord = null
         val ic = currentInputConnection
         if (text == " " && prefs.doubleSpacePeriod && !secretField && ic != null) {
             // Ikki marta boʻsh joy: "soʻz " + " " -> "soʻz. "
@@ -436,18 +475,31 @@ class KeyboardService : InputMethodService(),
     }
 
     override fun onDelete() {
+        val sw = swipeWord
+        if (sw != null) {
+            swipeWord = null
+            val ic = currentInputConnection
+            if (ic != null && ic.getTextBeforeCursor(sw.length + 1, 0)?.toString() == "$sw ") {
+                ic.deleteSurroundingText(sw.length + 1, 0)
+                root?.strip?.setSuggestions(emptyList())
+                updateShift()
+                return
+            }
+        }
         sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         refreshSuggestions(false)
         updateShift()
     }
 
     override fun onEnter() {
+        swipeWord = null
         if (!sendDefaultEditorAction(true)) sendKeyChar('\n')
         refreshSuggestions(true)
         updateShift()
     }
 
     override fun onCursor(dir: Int) {
+        swipeWord = null
         sendDownUpKeyEvents(if (dir > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT)
         refreshSuggestions(false)
     }
@@ -460,7 +512,7 @@ class KeyboardService : InputMethodService(),
         val i = packs.indexOfFirst { it.id == prefs.currentId }.coerceAtLeast(0)
         val p = packs[(i + 1) % packs.size]
         prefs.currentId = p.id
-        root?.keyboard?.setPack(p)
+        applyPack(p)
         updateShift()
     }
 

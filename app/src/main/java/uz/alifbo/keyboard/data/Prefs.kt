@@ -58,6 +58,13 @@ class Prefs(context: Context) {
             sp.edit().putBoolean("keyPreview", v).apply()
         }
 
+    /** Surib yozish (swipe). */
+    var swipe: Boolean
+        get() = sp.getBoolean("swipe", true)
+        set(v) {
+            sp.edit().putBoolean("swipe", v).apply()
+        }
+
     /** Tugma bosilganda tovush. */
     var sound: Boolean
         get() = sp.getBoolean("sound", false)

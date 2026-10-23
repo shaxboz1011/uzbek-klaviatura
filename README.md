@@ -34,6 +34,7 @@ Ilovani oching → «1. Klaviaturani yoqish» → roʻyxatda «Alifbo Klaviatura
 - **Tezkor tarjima** (asboblar qatoridagi «A文»): maydondagi yoki belgilangan matnni 15 tilga tarjima qiladi, keyin «Almashtirish» / «Qoʻshish» / «Nusxa». Matn MyMemory (mymemory.translated.net) xizmatiga yuboriladi — birinchi marta rozilik soʻraladi; parol/email/URL maydonlarida ishlamaydi.
 - **«…» menyusi**: hammasini tanlash, nusxa, kesish, qoʻyish, kursor, hammasini oʻchirish, bir qoʻl rejimi, mavzu (tizim/och/toʻq), tovush, sozlamalar, yopish.
 - **Mavzu va urgʻu rangi**, tugma tovushi, tugma ustida harf chiqishi, ikki marta boʻsh joy — nuqta, ikki sahifali belgilar (1/2, 2/2), bir qoʻl rejimidan chiqish tugmasi.
+- **Surib yozish (swipe)**: harflar ustidan barmoqni surib soʻz yozing; qoʻshimcha variantlar tepada, orqaga (⌫) bosish butun soʻzni oʻchiradi. Lugʻat: `registry/dict/<til>.txt` (en, ru — 30 000 soʻz; uz — boshlangʻich ~650 soʻz, oʻzbekcha lugʻat siz yozgan/surgan soʻzlar bilan toʻlib boradi). Yangi til uchun lugʻat qoʻshish: `tools/make_dicts.py`. en/ru lugʻati — hermitdave/FrequencyWords (CC-BY-SA 4.0).
 - **Soʻz tavsiyalari**: yozgan soʻzlaringizdan oʻrganadi. Parol, email va URL maydonlarida ishlamaydi va oʻrganmaydi.
 
 ## Tugmalar

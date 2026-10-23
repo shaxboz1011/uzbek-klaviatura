@@ -102,6 +102,11 @@ class SettingsActivity : Activity() {
             setOnCheckedChangeListener { _, on -> prefs.keyPreview = on }
         })
         root.addView(CheckBox(this).apply {
+            text = "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)"
+            isChecked = prefs.swipe
+            setOnCheckedChangeListener { _, on -> prefs.swipe = on }
+        })
+        root.addView(CheckBox(this).apply {
             text = "Tugma bosilganda tovush"
             isChecked = prefs.sound
             setOnCheckedChangeListener { _, on -> prefs.sound = on }

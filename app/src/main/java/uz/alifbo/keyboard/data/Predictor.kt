@@ -60,6 +60,13 @@ object Predictor {
             .map { it.key }
     }
 
+    /** Surib yozish uchun: oʻrganilgan soʻzlar nusxasi. */
+    @Synchronized
+    fun snapshot(ctx: Context): Map<String, Int> {
+        ensure(ctx)
+        return HashMap(words)
+    }
+
     @Synchronized
     fun save(ctx: Context) {
         if (!loaded || dirty == 0) return
