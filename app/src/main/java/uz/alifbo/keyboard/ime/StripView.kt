@@ -22,18 +22,17 @@ class StripView(context: Context) : View(context) {
 
     companion object {
         const val EMOJI = 0
-        const val CLIP = 1
-        const val VOICE = 2
-        const val ONEHAND = 3
+        const val TRANSLATE = 1
+        const val CLIP = 2
+        const val VOICE = 3
         const val SETTINGS = 4
-        const val HIDE = 5
+        const val MORE = 5
         private const val TOOL_COUNT = 6
     }
 
     var listener: Listener? = null
 
     private var suggestions: List<String> = emptyList()
-    private var oneHand = 0
     private var pressed = -1
 
     private val density = resources.displayMetrics.density
@@ -59,7 +58,7 @@ class StripView(context: Context) : View(context) {
         colText = context.getColor(R.color.kb_text)
         colHint = context.getColor(R.color.kb_hint)
         colPressed = context.getColor(R.color.kb_key_pressed)
-        colAccent = context.getColor(R.color.kb_accent)
+        colAccent = Theme.accent(context)
         invalidate()
     }
 
@@ -67,13 +66,6 @@ class StripView(context: Context) : View(context) {
         if (list != suggestions) {
             suggestions = list
             pressed = -1
-            invalidate()
-        }
-    }
-
-    fun setOneHandMode(m: Int) {
-        if (oneHand != m) {
-            oneHand = m
             invalidate()
         }
     }
@@ -152,18 +144,16 @@ class StripView(context: Context) : View(context) {
                 c.drawArc(rect, 0f, 180f, false, paint)
                 c.drawLine(cx, cy + s * 0.6f, cx, cy + s, paint)
             }
-            ONEHAND -> {
-                rect.set(cx - s * 0.6f, cy - s, cx + s * 0.6f, cy + s)
-                c.drawRoundRect(rect, s * 0.2f, s * 0.2f, paint)
-                if (oneHand == 0) {
-                    c.drawLine(cx - s * 0.25f, cy, cx + s * 0.25f, cy, paint)
-                } else {
-                    paint.color = colAccent
-                    val d = if (oneHand == 2) 1f else -1f
-                    c.drawLine(cx - d * s * 0.25f, cy, cx + d * s * 0.25f, cy, paint)
-                    c.drawLine(cx + d * s * 0.25f, cy, cx + d * 0.0f * s, cy - s * 0.25f, paint)
-                    c.drawLine(cx + d * s * 0.25f, cy, cx + d * 0.0f * s, cy + s * 0.25f, paint)
-                }
+            TRANSLATE -> {
+                rect.set(cx - s, cy - s * 0.85f, cx + s, cy + s * 0.85f)
+                c.drawRoundRect(rect, s * 0.3f, s * 0.3f, paint)
+                paint.style = Paint.Style.FILL
+                text.color = colText
+                text.textSize = s * 1.05f
+                c.drawText("A", cx - s * 0.38f, cy - s * 0.05f, text)
+                text.textSize = s * 0.85f
+                c.drawText("文", cx + s * 0.38f, cy + s * 0.62f, text)
+                paint.style = Paint.Style.STROKE
             }
             SETTINGS -> {
                 c.drawCircle(cx, cy, s * 0.4f, paint)
@@ -175,9 +165,10 @@ class StripView(context: Context) : View(context) {
                 }
                 c.drawCircle(cx, cy, s * 0.7f, paint)
             }
-            HIDE -> {
-                c.drawLine(cx - s * 0.8f, cy - s * 0.3f, cx, cy + s * 0.4f, paint)
-                c.drawLine(cx, cy + s * 0.4f, cx + s * 0.8f, cy - s * 0.3f, paint)
+            MORE -> {
+                paint.style = Paint.Style.FILL
+                for (d in -1..1) c.drawCircle(cx + d * s * 0.7f, cy, s * 0.14f, paint)
+                paint.style = Paint.Style.STROKE
             }
         }
     }

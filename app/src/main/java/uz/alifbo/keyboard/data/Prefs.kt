@@ -58,6 +58,48 @@ class Prefs(context: Context) {
             sp.edit().putBoolean("keyPreview", v).apply()
         }
 
+    /** Tugma bosilganda tovush. */
+    var sound: Boolean
+        get() = sp.getBoolean("sound", false)
+        set(v) {
+            sp.edit().putBoolean("sound", v).apply()
+        }
+
+    /** Ikki marta boʻsh joy — nuqta va boʻsh joy. */
+    var doubleSpacePeriod: Boolean
+        get() = sp.getBoolean("dblSpace", true)
+        set(v) {
+            sp.edit().putBoolean("dblSpace", v).apply()
+        }
+
+    /** 0 - tizimga ergashadi, 1 - och, 2 - toʻq. */
+    var theme: Int
+        get() = sp.getInt("theme", 0).coerceIn(0, 2)
+        set(v) {
+            sp.edit().putInt("theme", v).apply()
+        }
+
+    /** Urgʻu rangi (ARGB); 0 — standart. */
+    var accent: Int
+        get() = sp.getInt("accent", 0)
+        set(v) {
+            sp.edit().putInt("accent", v).apply()
+        }
+
+    /** Tezkor tarjima: qaysi tilga (til kodi). */
+    var translateTo: String
+        get() = sp.getString("trTo", "en") ?: "en"
+        set(v) {
+            sp.edit().putString("trTo", v).apply()
+        }
+
+    /** Tarjima uchun matn tashqi xizmatga yuborilishiga rozilik. */
+    var translateConsent: Boolean
+        get() = sp.getBoolean("trConsent", false)
+        set(v) {
+            sp.edit().putBoolean("trConsent", v).apply()
+        }
+
     /** Klaviatura balandligi, foizda (80..130). */
     var heightPercent: Int
         get() = sp.getInt("height", 100).coerceIn(80, 130)

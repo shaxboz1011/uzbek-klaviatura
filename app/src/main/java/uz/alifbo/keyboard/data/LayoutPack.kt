@@ -38,7 +38,7 @@ object DefaultLayers {
     private fun k(label: String, w: Float = 1f, vararg alt: String) =
         KeySpec(label, w, alt.toList(), null)
 
-    /** Barcha tillar uchun umumiy raqam/belgilar qatlami. */
+    /** Barcha tillar uchun umumiy raqam/belgilar qatlami (1/2). */
     val symbols: List<List<KeySpec>> = listOf(
         "1234567890".map { k(it.toString()) },
         listOf(
@@ -46,11 +46,26 @@ object DefaultLayers {
             k("*"), k("-", 1f, "_", "–", "—"), k("+", 1f, "±"), k("("), k(")")
         ),
         listOf(
+            k("@page", 1.5f),
             k("!", 1f, "¡"), k("\"", 1f, "«", "»", "“", "”"), k("'", 1f, "ʼ", "ʻ", "‘", "’"),
-            k(":"), k(";"), k("/", 1f, "\\"), k("?", 1f, "¿"), k("_"), k("=", 1f, "≠", "≈"),
-            k("@del", 1f)
+            k(":"), k(";"), k("/", 1f, "\\"), k("?", 1f, "¿"),
+            k("@del", 1.5f)
         ),
         listOf(k("@abc", 1.5f), k(","), k("@space", 5f), k("."), k("@enter", 1.5f))
+    )
+
+    /** Belgilar qatlami (2/2). */
+    val symbols2: List<List<KeySpec>> = listOf(
+        "1234567890".map { k(it.toString()) },
+        listOf(
+            k("~"), k("`"), k("|", 1f, "\\"), k("•"), k("√"), k("π"), k("÷"), k("×", 1f, "·"), k("¶"), k("∆")
+        ),
+        listOf(
+            k("@page", 1.5f),
+            k("£"), k("¢"), k("€"), k("¥"), k("^"), k("°", 1f, "©", "®", "™"), k("=", 1f, "≠", "≈", "_"),
+            k("@del", 1.5f)
+        ),
+        listOf(k("@abc", 1.5f), k("<", 1f, "≤", "«", "[", "{"), k("@space", 5f), k(">", 1f, "≥", "»", "]", "}"), k("@enter", 1.5f))
     )
 }
 

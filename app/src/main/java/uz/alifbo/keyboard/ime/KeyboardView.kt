@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
 import android.util.SparseArray
@@ -33,6 +34,7 @@ class KeyboardView(context: Context) : View(context) {
         fun onLangNext()
         fun onLangPicker()
         fun onCursor(dir: Int)
+        fun onExitOneHanded()
     }
 
     var listener: Listener? = null
@@ -65,6 +67,9 @@ class KeyboardView(context: Context) : View(context) {
     private var haptic = true
     private var heightScale = 1f
     private var keyPreview = true
+    private var sound = false
+    private var symPage = 0
+    private var audio: AudioManager? = null
     private var bottomInset = 0
     private var rows: List<List<KeySpec>> = emptyList()
     private val keys = ArrayList<KeyRect>()
@@ -73,6 +78,7 @@ class KeyboardView(context: Context) : View(context) {
     // ---- chizish ----
     private val density = resources.displayMetrics.density
     private val tmp = RectF()
+    private val shadow = RectF()
     private val path = Path()
     private val paintBg = Paint(Paint.ANTI_ALIAS_FLAG)
     private val paintKey = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -91,6 +97,7 @@ class KeyboardView(context: Context) : View(context) {
     private var colHint = 0
     private var colAccent = 0
     private var colPopup = 0
+    private var colShadow = 0
 
     private val longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
 
@@ -120,8 +127,9 @@ class KeyboardView(context: Context) : View(context) {
         colPressed = context.getColor(R.color.kb_key_pressed)
         colText = context.getColor(R.color.kb_text)
         colHint = context.getColor(R.color.kb_hint)
-        colAccent = context.getColor(R.color.kb_accent)
+        colAccent = Theme.accent(context)
         colPopup = context.getColor(R.color.kb_popup)
+        colShadow = context.getColor(R.color.kb_key_shadow)
         invalidate()
     }
 
@@ -136,6 +144,7 @@ class KeyboardView(context: Context) : View(context) {
     fun setSymbols(on: Boolean) {
         if (symbols == on) return
         symbols = on
+        symPage = 0
         refreshRows()
     }
 
@@ -159,8 +168,9 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    fun applyPrefs(haptic: Boolean, heightPercent: Int, keyPreview: Boolean = true) {
+    fun applyPrefs(haptic: Boolean, heightPercent: Int, keyPreview: Boolean = true, sound: Boolean = false) {
         this.haptic = haptic
+        this.sound = sound
         if (this.keyPreview != keyPreview) {
             this.keyPreview = keyPreview
             invalidate()
@@ -188,7 +198,7 @@ class KeyboardView(context: Context) : View(context) {
         val p = pack
         rows = when {
             p == null -> emptyList()
-            symbols -> DefaultLayers.symbols
+            symbols -> if (symPage == 1) DefaultLayers.symbols2 else DefaultLayers.symbols
             else -> {
                 val letters = p.rows + listOf(p.bottom)
                 if (numberRow) {
@@ -307,6 +317,11 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
             if (isKeyPressed(k)) bg = colPressed
+            if (!isKeyPressed(k)) {
+                shadow.set(tmp.left, tmp.top + dp(1.3f), tmp.right, tmp.bottom + dp(1.3f))
+                paintKey.color = colShadow
+                c.drawRoundRect(shadow, radius, radius, paintKey)
+            }
             paintKey.color = bg
             c.drawRoundRect(tmp, radius, radius, paintKey)
 
@@ -338,6 +353,11 @@ class KeyboardView(context: Context) : View(context) {
                     paintText.textSize = rowH * 0.3f
                     drawCentered(c, "!#1", cx, cy, paintText)
                 }
+                "@page" -> {
+                    paintText.color = fg
+                    paintText.textSize = rowH * 0.28f
+                    drawCentered(c, if (symPage == 0) "1/2" else "2/2", cx, cy, paintText)
+                }
                 "@abc" -> {
                     paintText.color = fg
                     paintText.textSize = rowH * 0.3f
@@ -361,6 +381,19 @@ class KeyboardView(context: Context) : View(context) {
                     }
                 }
             }
+        }
+
+        // Bir qo'l rejimi: bo'sh tomondagi tugma — oddiy rejimga qaytaradi
+        if (oneHanded != 0) {
+            val fullW = width - 2 * dp(3f)
+            val freeW = fullW * 0.18f
+            val left = if (oneHanded == 2) dp(3f) else width - dp(3f) - freeW
+            tmp.set(left + g, height * 0.5f - dp(30f), left + freeW - g, height * 0.5f + dp(30f))
+            paintKey.color = colSpecial
+            c.drawRoundRect(tmp, radius, radius, paintKey)
+            paintText.color = colText
+            paintText.textSize = dp(20f)
+            drawCentered(c, "⤢", tmp.centerX(), tmp.centerY(), paintText)
         }
 
         // Tugma ustida chiqadigan harf (Samsung kabi)
@@ -523,7 +556,19 @@ class KeyboardView(context: Context) : View(context) {
         return best
     }
 
+    private fun inFreeZone(x: Float): Boolean {
+        if (oneHanded == 0) return false
+        val fullW = width - 2 * dp(3f)
+        val freeW = fullW * 0.18f
+        return if (oneHanded == 2) x < dp(3f) + freeW else x > width - dp(3f) - freeW
+    }
+
     private fun down(id: Int, x: Float, y: Float) {
+        if (inFreeZone(x)) {
+            if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            listener?.onExitOneHanded()
+            return
+        }
         val k = hit(x, y) ?: return
         val p = Ptr(id)
         p.key = k
@@ -531,8 +576,20 @@ class KeyboardView(context: Context) : View(context) {
         p.anchor = x
         ptrs.put(id, p)
         if (haptic) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (sound) playClick(k.spec.label)
         arm(p, k)
         invalidate()
+    }
+
+    private fun playClick(label: String) {
+        val am = audio ?: (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)?.also { audio = it } ?: return
+        val fx = when (label) {
+            "@del" -> AudioManager.FX_KEYPRESS_DELETE
+            "@enter" -> AudioManager.FX_KEYPRESS_RETURN
+            "@space" -> AudioManager.FX_KEYPRESS_SPACEBAR
+            else -> AudioManager.FX_KEYPRESS_STANDARD
+        }
+        am.playSoundEffect(fx)
     }
 
     /** Tugmaga qarab uzoq bosish / takrorlashni ishga tushiradi. */
@@ -680,6 +737,10 @@ class KeyboardView(context: Context) : View(context) {
             "@del" -> listener?.onDelete()
             "@sym" -> setSymbols(true)
             "@abc" -> setSymbols(false)
+            "@page" -> {
+                symPage = 1 - symPage
+                refreshRows()
+            }
             "@lang" -> listener?.onLangNext()
             "@space" -> commit(" ")
             "@enter" -> {

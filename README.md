@@ -24,13 +24,16 @@ Ilovani oching → «1. Klaviaturani yoqish» → roʻyxatda «Alifbo Klaviatura
 
 ## Funksiyalar (Samsung klaviaturasiga oʻxshash)
 
-- Tepada asboblar qatori: emoji, bufer, ovozli kiritish, bir qoʻl rejimi, sozlamalar, yopish. Yozayotganda shu qator **soʻz tavsiyalariga** aylanadi.
+- Tepada asboblar qatori: emoji, tarjima, bufer, ovozli kiritish, sozlamalar, «…». Yozayotganda shu qator **soʻz tavsiyalariga** aylanadi.
 - Doimiy raqamlar qatori (sozlamalardan oʻchirsa boʻladi).
 - **Emoji**: 8 toifa + oxirgi ishlatilganlar.
 - **Bufer tarixi**: nusxalangan matnlar (30 tagacha), uzoq bosib «qadash». Faqat shu telefonda saqlanadi; parol menejerlari belgilagan maxfiy nusxalar saqlanmaydi.
 - **Ovozli kiritish**: tizimning nutq aniqlash oynasi orqali (Google ilovasi kerak; til — joriy klaviatura tili).
 - **Kursor**: boʻsh joy tugmasi ustida barmoqni surish.
 - **Bir qoʻl rejimi**: asboblar qatoridagi tugma — oʻchiq → oʻng → chap.
+- **Tezkor tarjima** (asboblar qatoridagi «A文»): maydondagi yoki belgilangan matnni 15 tilga tarjima qiladi, keyin «Almashtirish» / «Qoʻshish» / «Nusxa». Matn MyMemory (mymemory.translated.net) xizmatiga yuboriladi — birinchi marta rozilik soʻraladi; parol/email/URL maydonlarida ishlamaydi.
+- **«…» menyusi**: hammasini tanlash, nusxa, kesish, qoʻyish, kursor, hammasini oʻchirish, bir qoʻl rejimi, mavzu (tizim/och/toʻq), tovush, sozlamalar, yopish.
+- **Mavzu va urgʻu rangi**, tugma tovushi, tugma ustida harf chiqishi, ikki marta boʻsh joy — nuqta, ikki sahifali belgilar (1/2, 2/2), bir qoʻl rejimidan chiqish tugmasi.
 - **Soʻz tavsiyalari**: yozgan soʻzlaringizdan oʻrganadi. Parol, email va URL maydonlarida ishlamaydi va oʻrganmaydi.
 
 ## Tugmalar
