@@ -215,16 +215,19 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("autoCap", true)
         set(v) { sp.edit().putBoolean("autoCap", v).apply() }
 
-    /** Asboblar qatorida koʻrinadigan tugmalar (bit: 0 emoji, 1 tarjima, 2 bufer, 3 ovoz, 4 sozlamalar, 5 «…»). */
+    /** Asboblar qatorida koʻrinadigan tugmalar (bit: 0 emoji, 1 tarjima, 2 bufer, 3 ovoz, 4 sozlamalar, 5 «…», 6 skaner). */
     var toolsMask: Int
-        get() = sp.getInt("toolsMask", 63) and 63
-        set(v) { sp.edit().putInt("toolsMask", v or 32).apply() } // «…» doim bor
+        get() = (sp.getInt("toolsMask", 63) and 63) or (if (sp.getBoolean("scanTool", true)) 64 else 0)
+        set(v) {
+            // 6-bit (skaner) alohida saqlanadi: eski saqlangan qiymatlar skanerni yashirib qoʻymasligi uchun.
+            sp.edit().putInt("toolsMask", (v and 63) or 32).putBoolean("scanTool", (v and 64) != 0).apply()
+        }
 
     /** Barcha koʻrinish/xatti-harakat sozlamalarini standartga qaytaradi (tillar va oʻrganilgan soʻzlarga tegmaydi). */
     fun resetStyle() {
         sp.edit()
             .remove("keyRadius").remove("keyGap").remove("textScale").remove("keyShadow").remove("bottomPad")
-            .remove("hapticMs").remove("longPressMs").remove("cursorStep").remove("autoCap").remove("toolsMask")
+            .remove("scanTool").remove("hapticMs").remove("longPressMs").remove("cursorStep").remove("autoCap").remove("toolsMask")
             .remove("theme").remove("accent").remove("height").remove("soundVol")
             .apply()
     }

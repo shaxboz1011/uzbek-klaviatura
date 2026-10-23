@@ -27,13 +27,16 @@ class StripView(context: Context) : View(context) {
         const val VOICE = 3
         const val SETTINGS = 4
         const val MORE = 5
-        private const val TOOL_COUNT = 6
+        const val SCAN = 6
+
+        /** Qatordagi koʻrinish tartibi (id lar oʻzgarmaydi). */
+        private val ORDER = intArrayOf(EMOJI, TRANSLATE, SCAN, CLIP, VOICE, SETTINGS, MORE)
     }
 
     var listener: Listener? = null
 
     private var suggestions: List<String> = emptyList()
-    private var tools = intArrayOf(EMOJI, TRANSLATE, CLIP, VOICE, SETTINGS, MORE)
+    private var tools = ORDER.copyOf()
     private var pressed = -1
 
     private val density = resources.displayMetrics.density
@@ -66,7 +69,7 @@ class StripView(context: Context) : View(context) {
     /** Koʻrinadigan asboblar (bit niqobi: bit i — i-asbob). «…» har doim bor. */
     fun setToolsMask(mask: Int) {
         val m = mask or (1 shl MORE)
-        val t = (0 until TOOL_COUNT).filter { m and (1 shl it) != 0 }.toIntArray()
+        val t = ORDER.filter { m and (1 shl it) != 0 }.toIntArray()
         if (!t.contentEquals(tools)) {
             tools = t
             pressed = -1
@@ -176,6 +179,13 @@ class StripView(context: Context) : View(context) {
                     c.drawLine(cx + cs * s * 0.7f, cy + sn * s * 0.7f, cx + cs * s, cy + sn * s, paint)
                 }
                 c.drawCircle(cx, cy, s * 0.7f, paint)
+            }
+            SCAN -> {
+                rect.set(cx - s, cy - s * 0.6f, cx + s, cy + s * 0.85f)
+                c.drawRoundRect(rect, s * 0.25f, s * 0.25f, paint)
+                rect.set(cx - s * 0.4f, cy - s * 0.95f, cx + s * 0.4f, cy - s * 0.6f)
+                c.drawRoundRect(rect, s * 0.12f, s * 0.12f, paint)
+                c.drawCircle(cx, cy + s * 0.12f, s * 0.38f, paint)
             }
             MORE -> {
                 paint.style = Paint.Style.FILL
