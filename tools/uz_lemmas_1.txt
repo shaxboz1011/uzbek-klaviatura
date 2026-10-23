@@ -1,0 +1,33 @@
+# Oʻzbekcha lemmalar (asosiy shakllar). Imlo: ' -> oʻ/gʻ yoki tutuq avtomatik. Bo'limlar: [P] oʻzgarmas/tayyor shakllar, [N] ot, [A] sifat, [V] fe'l ildizi.
+# Tartib — taxminiy chastota (yuqori = koʻproq ishlatiladi).
+[P]
+va bu bir u men sen biz siz ular emas bor yo'q ha yoki lekin ammo ham hali endi faqat juda katta kichik
+yaxshi yomon yangi eski nima kim qayer qayerda qayerga qayerdan qachon qanday qanaqa nega nimaga kimga qancha qaysi nechta necha
+bilan uchun kabi singari haqida bo'yicha orqali keyin oldin keyinroq hozir bugun kecha ertaga doim har hamisha ba'zan
+mening sening uning bizning sizning ularning menga senga unga bizga sizga ularga meni seni uni bizni sizni ularni
+mendan sendan undan bizdan sizdan ulardan menda senda unda bizda sizda ularda
+kimning kimga kimni kimdan kimda nimaning nimani nimadan nimada
+buning bunga buni bundan bunda shuning shunga shuni shundan shunda shu shunday bunday shunaqa bunaqa shunchalik bunchalik
+o'sha o'shaning o'shanga o'shani o'shandan o'shanda o'zi o'zim o'zing o'zimiz o'zingiz o'zlari o'ziga o'zini o'zidan o'zida o'zining
+hamma hammasi hammaga hammani hammadan hammada barcha butun to'liq ko'p kam oz ozgina ko'pgina yana yanada eng ancha bir nechta
+birga alohida faqatgina yolg'iz hatto hech hech kim hech narsa hech qachon hech qayerda
+chunki agar balki albatta ehtimol aslida demak shuning uchun shunday qilib ya'ni masalan jumladan xususan
+mana mana bu ana ana u ushbu ayni aynan xuddi go'yo goh gohida ba'zi ba'zilar boshqa boshqalar boshqacha
+yuqori past oldin orqa ichki tashqi ichida tashqarida ustida ostida yonida oldida orqasida yaqinida
+ichkari tashqari tepa quyi chap o'ng o'rtada orasida
+bir ikki uch to'rt besh olti yetti sakkiz to'qqiz o'n yigirma o'ttiz qirq ellik oltmish yetmish sakson to'qson yuz ming million milliard
+birinchi ikkinchi uchinchi to'rtinchi beshinchi oltinchi yettinchi sakkizinchi to'qqizinchi o'ninchi
+nol yarim chorak juft toq bitta ikkita uchta to'rtta beshta oltita yettita sakkizta to'qqizta o'nta
+dushanba seshanba chorshanba payshanba juma shanba yakshanba
+yanvar fevral mart aprel may iyun iyul avgust sentabr oktabr noyabr dekabr
+ertalab kechqurun tushlik kechasi kunduzi tong peshin asr shom xufton
+bahor yoz kuz qish
+salom assalomu alaykum xayr xayrli rahmat katta rahmat marhamat kechirasiz kechirasan iltimos ma'qul mayli xo'p yaxshi bo'lsin
+ha-da yo'q-da to'g'ri noto'g'ri albatta aniq shubhasiz
+edi ekan emish ekanman ekansan ekanmiz ekansiz edim eding edik edingiz edilar
+deb degan dedi dedim dedingiz deydi deyman
+uchun sababli tufayli natijasida davomida mobaynida paytida vaqtida chog'ida
+bilan birga bilan ham
+ko'ra qaraganda nisbatan qarshi qarab tomon tomonga tomonda tomondan
+tez sekin asta darhol birdan to'satdan avval oldinroq keyinroq hozircha endigina
+juda kuchli zo'r a'lo ajoyib
