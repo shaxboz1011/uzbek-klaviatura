@@ -3,7 +3,7 @@ name: Windows layout
 # Windows klaviatura sxemasi: KLC -> DLL (MSKLC) -> oʻrnatuvchi (Inno Setup) -> haqiqiy oʻrnatib tekshirish.
 on:
   push:
-    branches: [main, claude/magical-mendel-37z1em]
+    branches: [main]
     paths: ['windows/**', '.github/workflows/windows.yml']
   workflow_dispatch:
   # sinov: ishchi branch

@@ -8,3 +8,4 @@ local.properties
 *.jks
 *.keystore
 signing-secrets*
+windows/out/
