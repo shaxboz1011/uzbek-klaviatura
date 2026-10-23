@@ -42,19 +42,28 @@ class KeyboardService : InputMethodService(),
     // Serverdan yangi alifbo kelganda klaviatura ochiq turgan bo'lsa ham darrov almashadi.
     private val storeListener: () -> Unit = { reloadPacks() }
 
-    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
+    private var lastClipText: String? = null
+
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { captureClip(true) }
+
+    /**
+     * Joriy nusxani bufer tarixiga qoʻshadi. Listener ishlamay qolgan (jarayon oʻldirilgan, nusxa klaviatura
+     * yopiq paytda olingan) holatlar uchun klaviatura ochilganda va bufer paneli ochilganda ham chaqiriladi.
+     * @return false — tizim buferga ruxsat bermadi.
+     */
+    private fun captureClip(force: Boolean): Boolean {
         try {
             val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = cm.primaryClip ?: return@OnPrimaryClipChangedListener
-            if (clip.itemCount == 0) return@OnPrimaryClipChangedListener
+            val clip = cm.primaryClip ?: return true
+            if (clip.itemCount == 0) return true
             // Parol menejerlari va boshqalar "maxfiy" deb belgilagan nusxalar saqlanmaydi.
-            if (clip.description.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true) {
-                return@OnPrimaryClipChangedListener
-            }
+            if (clip.description.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true) return true
             val t = clip.getItemAt(0).coerceToText(this).toString()
-            ClipStore.add(this, t)
+            if (force || t != lastClipText) ClipStore.add(this, t)
+            lastClipText = t
+            return true
         } catch (e: Exception) {
-            // buferni o'qib bo'lmasa — jim o'tamiz
+            return false
         }
     }
 
@@ -107,6 +116,7 @@ class KeyboardService : InputMethodService(),
         val r = root ?: return
         r.reloadColors()
         r.showPanel(KeyboardRoot.KEYBOARD)
+        captureClip(false)
         val v = r.keyboard
         v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
         v.setNumberRow(prefs.numberRow)
@@ -266,7 +276,8 @@ class KeyboardService : InputMethodService(),
                 r.translate.open(currentLang(), secretField)
             }
             StripView.CLIP -> {
-                r.clip.show(ClipStore.list(this))
+                val access = captureClip(false)
+                r.clip.show(ClipStore.list(this), access)
                 r.showPanel(KeyboardRoot.CLIP)
             }
             StripView.VOICE -> startVoice()
@@ -319,12 +330,12 @@ class KeyboardService : InputMethodService(),
 
     override fun onTogglePin(text: String) {
         ClipStore.togglePin(this, text)
-        root?.clip?.show(ClipStore.list(this))
+        root?.clip?.show(ClipStore.list(this), true)
     }
 
     override fun onClearClips() {
         ClipStore.clearUnpinned(this)
-        root?.clip?.show(ClipStore.list(this))
+        root?.clip?.show(ClipStore.list(this), true)
     }
 
     // ---------------------------------------------------------------- «…» menyusi

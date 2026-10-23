@@ -3,6 +3,8 @@ package uz.alifbo.keyboard.ui
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -27,6 +29,7 @@ import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
 import uz.alifbo.keyboard.data.RemoteSync
 import uz.alifbo.keyboard.ime.Theme
+import uz.alifbo.keyboard.update.Updater
 import java.text.DateFormat
 import java.util.Date
 
@@ -36,6 +39,10 @@ class SettingsActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var packsBox: LinearLayout
     private lateinit var syncInfo: TextView
+    private lateinit var updateInfo: TextView
+    private lateinit var updateBtn: Button
+    private lateinit var updateCheckBtn: Button
+    private var release: Updater.Release? = null
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -68,9 +75,27 @@ class SettingsActivity : Activity() {
             }
         }
         setContentView(scroll)
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
 
         root.addView(title("Alifbo Klaviatura"))
         root.addView(body("Yangi oʻzbek lotin alifbosi (Ş Ç Ö Ğ ʼ), eski lotin, kirill va boshqa tillar. Alifbo oʻzgarsa, ilova oʻzi yangilanadi."))
+
+        // ---- Ilova yangilanishi (GitHub Releases) ----
+        updateInfo = body("Versiya ${Updater.installedVersion(this)}")
+        root.addView(updateInfo)
+        updateBtn = button("Yangilash") { startInstall() }.apply { visibility = android.view.View.GONE }
+        root.addView(updateBtn)
+        updateCheckBtn = button("Yangilanishni tekshirish") { checkUpdate(true) }
+        root.addView(updateCheckBtn)
+        root.addView(CheckBox(this).apply {
+            text = "Yangi versiya chiqsa, bildirishnoma yuborish"
+            isChecked = prefs.autoUpdateCheck
+            setOnCheckedChangeListener { _, on -> prefs.autoUpdateCheck = on }
+        })
 
         status = body("")
         root.addView(status)
@@ -215,6 +240,71 @@ class SettingsActivity : Activity() {
             }.start()
         }
         root.addView(syncBtn)
+
+        if (prefs.autoUpdateCheck) checkUpdate(false)
+    }
+
+    private fun checkUpdate(manual: Boolean) {
+        if (manual) {
+            updateInfo.text = "Tekshirilmoqda…"
+            updateCheckBtn.isEnabled = false
+        }
+        Thread {
+            var rel: Updater.Release? = null
+            var err: String? = null
+            try {
+                rel = Updater.checkNewer(applicationContext)
+            } catch (e: Exception) {
+                err = e.message ?: e.javaClass.simpleName
+            }
+            runOnUiThread {
+                updateCheckBtn.isEnabled = true
+                release = rel
+                prefs.updateVersion = rel?.version ?: ""
+                val cur = Updater.installedVersion(this)
+                when {
+                    rel != null -> {
+                        val notes = rel.notes.lineSequence().firstOrNull { it.isNotBlank() && !it.startsWith("#") }.orEmpty()
+                        updateInfo.text = "Yangi versiya bor: v${rel.version} (hozir v$cur)" +
+                            if (notes.isNotEmpty()) "\n$notes" else ""
+                        updateBtn.visibility = android.view.View.VISIBLE
+                        updateBtn.isEnabled = true
+                        updateBtn.text = "Yuklab olish va oʻrnatish (v${rel.version})"
+                    }
+                    err != null -> {
+                        if (manual) updateInfo.text = "Versiya v$cur. Tekshirib boʻlmadi: $err"
+                    }
+                    else -> {
+                        updateBtn.visibility = android.view.View.GONE
+                        updateInfo.text = "Versiya v$cur — eng yangisi ✓"
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun startInstall() {
+        val rel = release ?: return
+        if (!Updater.canInstall(this)) {
+            Toast.makeText(this, "Alifbo uchun «Notanish ilovalarni oʻrnatish» ruxsatini yoqing, keyin yana bosing", Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            return
+        }
+        updateBtn.isEnabled = false
+        updateInfo.text = "Yuklanmoqda… 0%"
+        Thread {
+            val err = Updater.downloadAndInstall(applicationContext, rel) { pct ->
+                runOnUiThread { updateInfo.text = "Yuklanmoqda… $pct%" }
+            }
+            runOnUiThread {
+                if (err != null) {
+                    updateInfo.text = "Yangilanmadi: $err"
+                    updateBtn.isEnabled = true
+                } else {
+                    updateInfo.text = "Yuklandi. Oʻrnatishni tasdiqlang…"
+                }
+            }
+        }.start()
     }
 
     override fun onResume() {

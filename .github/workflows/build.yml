@@ -47,7 +47,7 @@ jobs:
       - name: Build debug APK
         run: |
           set -o pipefail
-          gradle :app:assembleDebug --no-daemon -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json 2>&1 | tee build.log
+          gradle :app:assembleDebug --no-daemon -PgithubRepo=${{ github.repository }} -PregistryUrl=https://raw.githubusercontent.com/${{ github.repository }}/main/registry/registry.json 2>&1 | tee build.log
 
       - name: Show compile errors
         if: failure()

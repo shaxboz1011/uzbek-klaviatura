@@ -60,11 +60,16 @@ class ClipPanel(context: Context) : LinearLayout(context) {
         setOnClickListener { onClick() }
     }
 
-    fun show(items: List<ClipStore.Item>) {
+    fun show(items: List<ClipStore.Item>, access: Boolean = true) {
         list.removeAllViews()
         if (items.isEmpty()) {
             list.addView(TextView(context).apply {
-                text = "Hozircha nusxa yoʻq. Biror matnni nusxalasangiz, shu yerda paydo boʻladi."
+                text = if (access) {
+                    "Hozircha nusxa yoʻq. Biror matnni nusxalasangiz, shu yerda paydo boʻladi."
+                } else {
+                    "Tizim buferga ruxsat bermadi. Sozlamalarda Alifbo klaviaturasi tanlanganini tekshiring " +
+                        "(Sozlamalar → Umumiy boshqaruv → Klaviatura roʻyxati)."
+                }
                 textSize = 14f
                 setTextColor(context.getColor(R.color.kb_hint))
                 setPadding(dp(16), dp(24), dp(16), dp(16))

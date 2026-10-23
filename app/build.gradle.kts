@@ -12,10 +12,13 @@ val registryUrl: String = (project.findProperty("registryUrl") as String?)
 
 // Versiya: build vaqtida  -PversionName=1.2.0  (release workflow tegdan oladi).
 // versionCode = major*10000 + minor*100 + patch, shunda yangi versiya eskisining ustiga oʻrnatiladi.
-val appVersionName: String = (project.findProperty("versionName") as String?) ?: "1.1.0"
+val appVersionName: String = (project.findProperty("versionName") as String?) ?: "1.2.0"
 val appVersionCode: Int = appVersionName.split(".").mapNotNull { it.toIntOrNull() }.let {
     (it.getOrElse(0) { 0 }) * 10000 + (it.getOrElse(1) { 0 }) * 100 + (it.getOrElse(2) { 0 })
 }.coerceAtLeast(1)
+
+// Yangilanishlar tekshiriladigan GitHub repo (owner/repo).
+val githubRepo: String = (project.findProperty("githubRepo") as String?) ?: "shaxboz1011/uzbek-klaviatura"
 
 // Qatʼiy imzo kaliti (GitHub Secrets). Boʻlmasa — standart debug kalit (faqat sinov uchun).
 val ksFile: String? = System.getenv("KEYSTORE_FILE")
@@ -31,6 +34,7 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("String", "REGISTRY_URL", "\"$registryUrl\"")
+        buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
     }
 
     signingConfigs {
