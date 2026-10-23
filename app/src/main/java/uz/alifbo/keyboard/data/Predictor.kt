@@ -48,14 +48,32 @@ object Predictor {
         if (dirty >= 25) save(ctx)
     }
 
+    /**
+     * Tavsiyalar: siz yozgan (oʻrganilgan) soʻzlar va boshlangʻich lugʻat (lex) birlashtiriladi.
+     * Oʻrganilgan soʻzlar ustun (qancha koʻp ishlatilsa, shuncha yuqori).
+     */
     @Synchronized
-    fun suggest(ctx: Context, prefix: String, max: Int): List<String> {
+    fun suggest(ctx: Context, prefix: String, max: Int, lex: Lexicon? = null): List<String> {
         ensure(ctx)
         val p = prefix.lowercase()
         if (p.isEmpty()) return emptyList()
-        return words.entries
-            .filter { it.key.startsWith(p) && it.key != p }
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key.length })
+        val scored = HashMap<String, Float>()
+        for (e in words.entries) {
+            if (e.key.startsWith(p) && e.key != p) scored[e.key] = 0.6f + minOf(e.value, 20) / 50f
+        }
+        val list = lex?.byFirst?.get(p[0])
+        if (list != null) {
+            var found = 0
+            for (en in list) { // chastota boʻyicha tartiblangan
+                if (en.word.length > p.length && en.word.startsWith(p)) {
+                    val s = en.prior * 0.9f
+                    if (s > (scored[en.word] ?: 0f)) scored[en.word] = s
+                    if (++found >= max * 3) break
+                }
+            }
+        }
+        return scored.entries
+            .sortedWith(compareByDescending<Map.Entry<String, Float>> { it.value }.thenBy { it.key.length })
             .take(max)
             .map { it.key }
     }

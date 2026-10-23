@@ -2,7 +2,7 @@
 """
 Surib yozish (swipe) lugʻatlarini yaratadi: registry/dict/<til>.txt  (har qatorda: soʻz<TAB>chastota).
 en, ru — hermitdave/FrequencyWords (OpenSubtitles 2018, CC-BY-SA 4.0) dan yuklanadi.
-uz — tools/uz_words.txt (qoʻlda yigʻilgan boshlangʻich roʻyxat, chastota tartibida); chastota oʻrniga tartib raqami ishlatiladi.
+uz, uz_cyrl — tools/make_uz_lexicon.py (lemmalardan qoʻshimchalar bilan hosil qilinadi).
 """
 import pathlib
 import re
@@ -36,14 +36,7 @@ def main():
         rows = freq_list(lang, pat)
         (OUT / f"{lang}.txt").write_text("".join(f"{w}\t{c}\n" for w, c in rows), encoding="utf-8")
         print(lang, len(rows))
-    words = []
-    for line in (ROOT / "tools" / "uz_words.txt").read_text(encoding="utf-8").split():
-        w = line.strip().lower()
-        if w and w not in words:
-            words.append(w)
-    n = len(words)
-    (OUT / "uz.txt").write_text("".join(f"{w}\t{max(1, 1000000 // (i + 5))}\n" for i, w in enumerate(words)), encoding="utf-8")
-    print("uz", n)
+    print("uz va uz_cyrl: python3 tools/make_uz_lexicon.py")
 
 
 if __name__ == "__main__":

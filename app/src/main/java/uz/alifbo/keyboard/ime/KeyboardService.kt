@@ -205,6 +205,10 @@ class KeyboardService : InputMethodService(),
         applyPack(p)
     }
 
+    /** Joriy alifbo uchun boshlangʻich lugʻat (yuklangan boʻlsa). */
+    private fun currentLexicon() =
+        (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.let { LexiconStore.get(it) }
+
     private fun applyPack(p: LayoutPack) {
         root?.keyboard?.setPack(p)
         LexiconStore.loadAsync(this, p) {}
@@ -252,7 +256,7 @@ class KeyboardService : InputMethodService(),
         val cur = trailingWord(before)
         if (boundary && learnOn && prevWord.length >= 2) Predictor.learn(this, prevWord)
         prevWord = cur
-        r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3))
+        r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3, currentLexicon()))
     }
 
     override fun onSuggestion(text: String) {

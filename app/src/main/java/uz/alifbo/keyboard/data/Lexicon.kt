@@ -14,6 +14,7 @@ class Lexicon(val byFirst: Map<Char, List<Entry>>) {
 
 object LexiconStore {
     private val cache = ConcurrentHashMap<String, Lexicon>()
+    private val order = ArrayList<String>() // yuklanish tartibi: xotirani tejash uchun eng koʻpi bilan 2 ta lugʻat saqlanadi
     private val loading = HashSet<String>()
 
     fun get(pack: LayoutPack): Lexicon? = cache[key(pack)]
@@ -42,6 +43,11 @@ object LexiconStore {
             } catch (e: Exception) {
                 cache[k] = Lexicon(emptyMap())
             } finally {
+                synchronized(order) {
+                    order.remove(k)
+                    order.add(k)
+                    while (order.size > 2) cache.remove(order.removeAt(0))
+                }
                 synchronized(loading) { loading.remove(k) }
             }
             onReady()
@@ -54,7 +60,7 @@ object LexiconStore {
         val modern = 'ş' in letters
         val words = HashMap<String, Float>()
         val lines = try {
-            ctx.assets.open("dict/$lang.txt").bufferedReader().use { it.readLines() }
+            ctx.assets.open("dict/${if (lang == "uz" && 'ў' in letters) "uz_cyrl" else lang}.txt").bufferedReader().use { it.readLines() }
         } catch (e: Exception) {
             emptyList()
         }
@@ -80,6 +86,8 @@ object LexiconStore {
         }
         val by = HashMap<Char, ArrayList<Lexicon.Entry>>()
         for ((w, pr) in words) by.getOrPut(w[0]) { ArrayList() }.add(Lexicon.Entry(w, pr))
+        // Har bir guruh chastota boʻyicha kamayish tartibida: tavsiya berishda birinchi mos kelganlari eng yaxshisi.
+        for (l in by.values) l.sortByDescending { it.prior }
         return Lexicon(by)
     }
 }
