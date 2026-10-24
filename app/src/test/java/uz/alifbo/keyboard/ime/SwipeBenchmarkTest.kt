@@ -178,6 +178,26 @@ class SwipeBenchmarkTest {
         assertTrue(t1 <= t3)
     }
 
+    /** Tashxis: dekoder xato qilgan soʻzlar (birinchi 40 tasi) — sozlash uchun. */
+    @Test
+    fun printFailures() {
+        val rnd = Random(7)
+        var shown = 0
+        var fails = 0
+        var total = 0
+        for (w in testWords(400)) {
+            val (xs, ys, n) = path(w, 0.2f, rnd)
+            if (n < 3) continue
+            total++
+            val res = SwipeDecoder.decode(xs, ys, n, centers, keyW, lex, emptyMap(), 3)
+            if (res.firstOrNull() != w) {
+                fails++
+                if (shown++ < 40) println("FAIL $w -> $res")
+            }
+        }
+        println("FAIL jami: $fails / $total")
+    }
+
     @Test
     fun decodesSimpleWordExactly() {
         val rnd = Random(1)
