@@ -60,22 +60,42 @@ class SwipeBenchmarkTest {
             }
         }
 
-        /** Soʻz uchun barmoq yoʻli: harf markazlarini tutashtiruvchi chiziq + shovqin (jitter * keyW) + yumshatish. */
+        /**
+         * Soʻz uchun realistik barmoq yoʻli: harf markazlari boʻylab, lekin burchaklar kesiladi (Chaykin yumshatish),
+         * sekin "siljish" (past chastotali xato), boshlanish/tugash nuqtasida xato va ozgina mayda shovqin bor.
+         * jitter — xatolik darajasi (tugma kengligi ulushida): 0.1 — puxta, 0.3 — shoshilgan.
+         */
         fun path(word: String, jitter: Float, rnd: Random): Triple<FloatArray, FloatArray, Int> {
-            val pts = ArrayList<FloatArray>()
+            var pts = ArrayList<FloatArray>()
             var prev: FloatArray? = null
             for (ch in word) {
                 val c = centers[ch] ?: return Triple(FloatArray(0), FloatArray(0), 0)
                 if (prev != null && prev[0] == c[0] && prev[1] == c[1]) continue
-                pts.add(c)
+                pts.add(floatArrayOf(c[0], c[1]))
                 prev = c
+            }
+            // boshlanish va tugash xatosi
+            for (idx in listOf(0, pts.size - 1)) {
+                pts[idx][0] += (rnd.nextGaussian() * jitter * keyW * 0.7).toFloat()
+                pts[idx][1] += (rnd.nextGaussian() * jitter * keyW * 0.7).toFloat()
+            }
+            // burchaklarni kesish (Chaykin, 2 marta); birinchi va oxirgi nuqta saqlanadi
+            repeat(2) {
+                if (pts.size >= 3) {
+                    val q = ArrayList<FloatArray>()
+                    q.add(pts.first())
+                    for (i in 0 until pts.size - 1) {
+                        val a = pts[i]; val b = pts[i + 1]
+                        q.add(floatArrayOf(0.75f * a[0] + 0.25f * b[0], 0.75f * a[1] + 0.25f * b[1]))
+                        q.add(floatArrayOf(0.25f * a[0] + 0.75f * b[0], 0.25f * a[1] + 0.75f * b[1]))
+                    }
+                    q.add(pts.last())
+                    pts = q
+                }
             }
             val xs = ArrayList<Float>()
             val ys = ArrayList<Float>()
             val step = keyW / 6f
-            if (pts.size == 1) {
-                xs.add(pts[0][0]); ys.add(pts[0][1])
-            }
             for (i in 1 until pts.size) {
                 val a = pts[i - 1]
                 val b = pts[i]
@@ -89,15 +109,20 @@ class SwipeBenchmarkTest {
             }
             xs.add(pts.last()[0]); ys.add(pts.last()[1])
             val n = xs.size
-            val nx = FloatArray(n) { xs[it] + (rnd.nextGaussian() * jitter * keyW).toFloat() }
-            val ny = FloatArray(n) { ys[it] + (rnd.nextGaussian() * jitter * keyW).toFloat() }
-            // yumshatish (harakatlanuvchi oʻrtacha, oyna 5)
+            // past chastotali siljish: ikki sinus (1..3 davr), amplituda ~ jitter*keyW
+            val ax = jitter * keyW * 1.2f
+            val f1 = 1f + rnd.nextFloat() * 2f; val f2 = 1f + rnd.nextFloat() * 2f
+            val p1 = rnd.nextFloat() * 6.28f; val p2 = rnd.nextFloat() * 6.28f
+            val p3 = rnd.nextFloat() * 6.28f; val p4 = rnd.nextFloat() * 6.28f
             val sx = FloatArray(n)
             val sy = FloatArray(n)
             for (i in 0 until n) {
-                var ax = 0f; var ay = 0f; var c = 0
-                for (j in maxOf(0, i - 2)..minOf(n - 1, i + 2)) { ax += nx[j]; ay += ny[j]; c++ }
-                sx[i] = ax / c; sy[i] = ay / c
+                val t = i.toFloat() / maxOf(1, n - 1)
+                val w = Math.sin(Math.PI * t).toFloat() // chetlarda kichikroq, oʻrtada kattaroq
+                sx[i] = xs[i] + ax * w * (Math.sin(2 * Math.PI * f1 * t + p1).toFloat() + 0.5f * Math.sin(2 * Math.PI * 2 * f2 * t + p2).toFloat()) +
+                    (rnd.nextGaussian() * jitter * keyW * 0.1).toFloat()
+                sy[i] = ys[i] + ax * w * (Math.sin(2 * Math.PI * f2 * t + p3).toFloat() + 0.5f * Math.sin(2 * Math.PI * 2 * f1 * t + p4).toFloat()) +
+                    (rnd.nextGaussian() * jitter * keyW * 0.1).toFloat()
             }
             return Triple(sx, sy, n)
         }
@@ -137,12 +162,12 @@ class SwipeBenchmarkTest {
 
     @Test
     fun lexiconHasCommonWords() {
-        for (w in listOf("salom", "kitob", "maktab", "yaxshi")) assertTrue("$w yoʻq", lex.contains(w))
+        for (w in listOf("salom", "kitob", "maktab", "yaxşi")) assertTrue("$w yoʻq", lex.contains(w)) // yangi alifbo: sh -> ş
     }
 
     @Test
     fun benchmark() {
-        for (j in listOf(0.10f, 0.20f, 0.30f)) {
+        for (j in listOf(0.10f, 0.20f, 0.30f, 0.40f)) {
             val t0 = System.nanoTime()
             val (t1, t3) = run(j)
             val ms = (System.nanoTime() - t0) / 1e6 / 400
