@@ -201,7 +201,7 @@ class SwipeBenchmarkTest {
 
     @Test
     fun benchmark() {
-        for (j in listOf(0.10f, 0.20f, 0.30f, 0.40f)) {
+        for (j in listOf(0.10f, 0.30f)) {
             val t0 = System.nanoTime()
             val (t1, t3) = run(j)
             val ms = (System.nanoTime() - t0) / 1e6 / 400
@@ -212,54 +212,39 @@ class SwipeBenchmarkTest {
         assertTrue(t1 <= t3)
     }
 
-    /** Qatlamli solishtirish: har bir variant uchun mashhur/oʻrta/kam soʻzlarda top-1 va top-3 (jitter 0.25). */
+    /** Qatlamli solishtirish: mashhur/oʻrta/kam soʻzlarda top-1 va top-3 (jitter 0.25) hamda amaliy ulushlar (55/30/15%) boʻyicha oʻrtacha. */
     @Test
     fun strataSweep() {
         val st = strata()
+        val share = mapOf("mashhur" to 0.55, "oʻrta" to 0.30, "kam" to 0.15)
+        fun t(p: Float, m: Float, mf: Float, e: Float) =
+            SwipeDecoder.Tuning(priorWeight = p, lenMin = 0.25f, lenMax = 3.5f, missFree = mf, missWeight = m, endRadius = e)
         val configs = listOf(
-            "asos" to SwipeDecoder.Tuning(),
-            "kombi3" to SwipeDecoder.Tuning(priorWeight = 1.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
-            "p1.2" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
-            "p0.8" to SwipeDecoder.Tuning(priorWeight = 0.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
-            "p2.6" to SwipeDecoder.Tuning(priorWeight = 2.6f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
-            "p1.2m0" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.0f, endRadius = 2.0f),
-            "p1.8m0" to SwipeDecoder.Tuning(priorWeight = 1.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.0f, endRadius = 2.0f),
-            "p1.2e1.6" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 1.6f)
+            "A p1.2 m0 e1.6" to t(1.2f, 0.0f, 1.5f, 1.6f),
+            "B p1.5 m0 e1.6" to t(1.5f, 0.0f, 1.5f, 1.6f),
+            "C p1.2 m.15 e1.6" to t(1.2f, 0.15f, 1.5f, 1.6f),
+            "D p1.2 m0 e1.3" to t(1.2f, 0.0f, 1.5f, 1.3f),
+            "E p1.0 m0 e1.6" to t(1.0f, 0.0f, 1.5f, 1.6f)
         )
         val keep = SwipeDecoder.tuning
         try {
             for ((name, cfg) in configs) {
                 SwipeDecoder.tuning = cfg
-                val sb = StringBuilder("STRATA %-9s".format(name))
+                val sb = StringBuilder("STRATA %-17s".format(name))
+                var w1 = 0.0
+                var w3 = 0.0
                 for ((sn, words) in st) {
                     val (t1, t3) = runWords(words, 0.25f)
-                    sb.append(" | %s top1=%.3f top3=%.3f".format(sn, t1, t3))
+                    sb.append(" | %s %.3f/%.3f".format(sn, t1, t3))
+                    w1 += t1 * share.getValue(sn)
+                    w3 += t3 * share.getValue(sn)
                 }
+                sb.append(" || AMALIY top1=%.3f top3=%.3f".format(w1, w3))
                 println(sb)
             }
         } finally {
             SwipeDecoder.tuning = keep
         }
-    }
-
-    /** Tashxis: dekoder xato qilgan soʻzlar (birinchi 40 tasi) — sozlash uchun. */
-    @Test
-    fun printFailures() {
-        val rnd = Random(7)
-        var shown = 0
-        var fails = 0
-        var total = 0
-        for (w in testWords(400)) {
-            val (xs, ys, n) = path(w, 0.2f, rnd)
-            if (n < 3) continue
-            total++
-            val res = SwipeDecoder.decode(xs, ys, n, centers, keyW, lex, emptyMap(), 3)
-            if (res.firstOrNull() != w) {
-                fails++
-                if (shown++ < 40) println("FAIL $w -> $res")
-            }
-        }
-        println("FAIL jami: $fails / $total")
     }
 
     @Test
