@@ -41,6 +41,12 @@ jobs:
             } >> "$GITHUB_ENV"
           fi
 
+      - name: Check Uzbek lexicon
+        run: |
+          python3 tools/make_uz_lexicon.py
+          git diff --exit-code registry/dict/ || (echo "::error::registry/dict/ yangilanmagan: python3 tools/make_uz_lexicon.py ni ishga tushirib commit qiling" && exit 1)
+          python3 tools/test_uz_lexicon.py
+
       - name: Validate alphabet packs
         run: python3 tools/build_registry.py
 

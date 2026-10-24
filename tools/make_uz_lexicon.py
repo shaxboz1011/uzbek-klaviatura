@@ -15,7 +15,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "registry" / "dict"
-MAXN = 150000
+MAXN = 180000
 
 OKINA = "ʻ"   # ʻ  (oʻ, gʻ)
 TUTUQ = "ʼ"   # ʼ  (tutuq)
@@ -71,12 +71,20 @@ def case_forms(s):
     return out
 
 
+# Egalik qoʻshimchasidan oldin unli tushadigan soʻzlar (shahar -> shahrim, oʻgʻil -> oʻgʻlim).
+DROP = {"shahar": "shahr", "o\u02bbg\u02bbil": "o\u02bbg\u02bbl", "burun": "burn", "singil": "singl", "qorin": "qorn",
+        "bo\u02bbyin": "bo\u02bbyn", "ko\u02bbngil": "ko\u02bbngl", "o\u02bbrin": "o\u02bbrn", "og\u02bbiz": "og\u02bbz",
+        "nutq": "nutq", "ariq": "ariq"}
+
+
 def possessives(s):
     """[(shakl, shaxs)] — k/q bilan tugagan koʻp boʻgʻinli soʻzlarda undosh almashadi (yurak -> yuragi)."""
     v = vowel_final(s)
     res = []
     stems = [s]
-    if not v and syllables(s) >= 2 and s[-1] in "kq":
+    if s in DROP:
+        stems = [DROP[s]]
+    elif not v and syllables(s) >= 2 and s[-1] in "kq":
         stems = [s[:-1] + ("g" if s[-1] == "k" else "g" + OKINA)]
     for st in stems:
         res.append((st + ("m" if v else "im"), "1s"))
@@ -161,7 +169,7 @@ def verb_forms(st, w=1.0):
         add(st + ("yotgan" if v else "ayotgan") + ("" if e in ("ti",) else ""), w * 0.2)
     for e in PERS_NOM:
         add(st + ("yotgan" if v else "ayotgan") + e, w * 0.08)
-        add(st + "moqda" + e, w * 0.15 if e == "" else w * 0.06)
+        add(st + "moqda" + e, w * 0.3 if e == "" else w * 0.06)
         add(st + "moqchi" + e, w * 0.1 if e == "" else w * 0.04)
     # oʻtgan zamon
     for e in PERS_PAST:
@@ -214,23 +222,25 @@ def verb_forms(st, w=1.0):
 def derived_stems(st):
     v = vowel_final(st)
     out = []
+    # imkoniyat: kel -> kelol (kelolmayman), oʻqi -> oʻqiyol
+    out.append((st + ("yol" if v else "ol"), 0.25))
     # majhul nisbat
     if st.endswith("l"):
-        out.append(st + "in")
+        out.append((st + "in", 0.6))
     elif v:
-        out.append(st + "n")
+        out.append((st + "n", 0.6))
     else:
-        out.append(st + "il")
+        out.append((st + "il", 0.6))
     # ortirma nisbat
     if st[-1] in "kqptsfxh" or st.endswith(("ch", "sh")):
-        out.append(st + "tir")
+        out.append((st + "tir", 0.25))
     elif v or st[-1] in "lr":
-        out.append(st + "t")
+        out.append((st + "t", 0.25))
     else:
-        out.append(st + "dir")
+        out.append((st + "dir", 0.25))
     # oʻzlik
     if not st.endswith("n"):
-        out.append(st + ("n" if v else "in"))
+        out.append((st + ("n" if v else "in"), 0.2))
     return out
 
 
@@ -283,7 +293,7 @@ def to_cyrillic(w):
 
 def read_lemmas():
     items = []   # (section, lemma)
-    for p in sorted((ROOT / "tools").glob("uz_lemmas_*.txt")):
+    for p in sorted((ROOT / "tools").glob("uz_lemmas_*.txt"), key=lambda q: int(re.search(r"(\d+)", q.stem).group(1))):
         sec = "N"
         for line in p.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -334,9 +344,14 @@ def main():
         elif sec == "V":
             for f, x in verb_forms(lemma, prior).items():
                 add(f, x)
-            for d in derived_stems(lemma):
-                for f, x in verb_forms(d, prior * 0.3).items():
+            for d, dw in derived_stems(lemma):
+                for f, x in verb_forms(d, prior * dw).items():
                     add(f, x)
+    # soʻroq yuklamasi -mi: eng koʻp ishlatiladigan shakllarga ("borasanmi", "yaxshimi", "tinchlikmi")
+    top_forms = sorted(scores.items(), key=lambda kv: -kv[1])[:40000]
+    for f, x in top_forms:
+        if len(f) >= 3 and not f.endswith("mi"):
+            add(f + "mi", x * 0.08)
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])[:MAXN]
     OUT.mkdir(parents=True, exist_ok=True)
     top = ranked[0][1]
