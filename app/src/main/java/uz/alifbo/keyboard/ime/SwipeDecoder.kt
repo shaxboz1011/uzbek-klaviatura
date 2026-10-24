@@ -16,12 +16,12 @@ object SwipeDecoder {
 
     /** Dekoder parametrlari (testlarda solishtirib sozlanadi; ilovada standart qiymatlar ishlatiladi). */
     class Tuning(
-        var priorWeight: Float = 0.45f,   // soʻz chastotasining vazni
-        var missWeight: Float = 0.6f,     // yoʻl harf yonidan oʻtmasa jarima
-        var missFree: Float = 1.1f,       // shu masofagacha (tugma kengligida) jarima yoʻq
-        var lenMin: Float = 0.4f,         // ideal yoʻl uzunligi / foydalanuvchi yoʻli uzunligi: eng kichik
-        var lenMax: Float = 2.3f,         // ... eng katta
-        var endRadius: Float = 1.6f       // birinchi/oxirgi harf boshlanish/tugash nuqtasiga eng koʻp qancha yaqin boʻlishi
+        var priorWeight: Float = 1.2f,   // soʻz chastotasining vazni
+        var missWeight: Float = 0.0f,     // yoʻl harf yonidan oʻtmasa jarima
+        var missFree: Float = 1.5f,       // shu masofagacha (tugma kengligida) jarima yoʻq
+        var lenMin: Float = 0.25f,         // ideal yoʻl uzunligi / foydalanuvchi yoʻli uzunligi: eng kichik
+        var lenMax: Float = 3.5f,         // ... eng katta
+        var endRadius: Float = 1.3f       // birinchi/oxirgi harf boshlanish/tugash nuqtasiga eng koʻp qancha yaqin boʻlishi
     )
 
     @Volatile

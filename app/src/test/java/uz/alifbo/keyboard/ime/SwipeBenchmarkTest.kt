@@ -212,39 +212,21 @@ class SwipeBenchmarkTest {
         assertTrue(t1 <= t3)
     }
 
-    /** Qatlamli solishtirish: mashhur/oʻrta/kam soʻzlarda top-1 va top-3 (jitter 0.25) hamda amaliy ulushlar (55/30/15%) boʻyicha oʻrtacha. */
+    /** Qatlamli regressiya: standart sozlamada amaliy (55/30/15%) aniqlik pasayib ketmasin (oʻlchangan: top1 ≈ 0.68, top3 ≈ 0.84). */
     @Test
-    fun strataSweep() {
-        val st = strata()
+    fun strataFloor() {
         val share = mapOf("mashhur" to 0.55, "oʻrta" to 0.30, "kam" to 0.15)
-        fun t(p: Float, m: Float, mf: Float, e: Float) =
-            SwipeDecoder.Tuning(priorWeight = p, lenMin = 0.25f, lenMax = 3.5f, missFree = mf, missWeight = m, endRadius = e)
-        val configs = listOf(
-            "A p1.2 m0 e1.6" to t(1.2f, 0.0f, 1.5f, 1.6f),
-            "B p1.5 m0 e1.6" to t(1.5f, 0.0f, 1.5f, 1.6f),
-            "C p1.2 m.15 e1.6" to t(1.2f, 0.15f, 1.5f, 1.6f),
-            "D p1.2 m0 e1.3" to t(1.2f, 0.0f, 1.5f, 1.3f),
-            "E p1.0 m0 e1.6" to t(1.0f, 0.0f, 1.5f, 1.6f)
-        )
-        val keep = SwipeDecoder.tuning
-        try {
-            for ((name, cfg) in configs) {
-                SwipeDecoder.tuning = cfg
-                val sb = StringBuilder("STRATA %-17s".format(name))
-                var w1 = 0.0
-                var w3 = 0.0
-                for ((sn, words) in st) {
-                    val (t1, t3) = runWords(words, 0.25f)
-                    sb.append(" | %s %.3f/%.3f".format(sn, t1, t3))
-                    w1 += t1 * share.getValue(sn)
-                    w3 += t3 * share.getValue(sn)
-                }
-                sb.append(" || AMALIY top1=%.3f top3=%.3f".format(w1, w3))
-                println(sb)
-            }
-        } finally {
-            SwipeDecoder.tuning = keep
+        var w1 = 0.0
+        var w3 = 0.0
+        for ((sn, words) in strata()) {
+            val (t1, t3) = runWords(words, 0.25f)
+            println("STRATA $sn top1=%.3f top3=%.3f".format(t1, t3))
+            w1 += t1 * share.getValue(sn)
+            w3 += t3 * share.getValue(sn)
         }
+        println("STRATA AMALIY top1=%.3f top3=%.3f".format(w1, w3))
+        assertTrue("amaliy top1 past: $w1", w1 > 0.62)
+        assertTrue("amaliy top3 past: $w3", w3 > 0.79)
     }
 
     @Test
