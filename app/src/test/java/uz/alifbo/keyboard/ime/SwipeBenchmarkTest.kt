@@ -135,6 +135,40 @@ class SwipeBenchmarkTest {
             .take(count)
             .map { it.word }
 
+    /** Qatlamlar: mashhur (1–300-oʻrin), oʻrtacha (1500–15000), kam uchraydigan (20000+) soʻzlar. Chastotaga moslashib ketmaslik uchun. */
+    private fun strata(): Map<String, List<String>> {
+        val all = lex.byFirst.values.flatten()
+            .filter { it.word.length in 4..10 && it.word.all { c -> c in centers } }
+            .sortedByDescending { it.prior }
+            .map { it.word }
+        val rnd = Random(5)
+        fun pick(from: Int, to: Int, n: Int): List<String> {
+            val slice = all.drop(from).take(maxOf(0, to - from))
+            return slice.shuffled(rnd).take(n)
+        }
+        return linkedMapOf(
+            "mashhur" to all.take(200),
+            "oʻrta" to pick(1500, 15000, 200),
+            "kam" to pick(20000, 100000, 200)
+        )
+    }
+
+    private fun runWords(words: List<String>, jitter: Float): Pair<Double, Double> {
+        val rnd = Random(42)
+        var top1 = 0
+        var top3 = 0
+        var total = 0
+        for (w in words) {
+            val (xs, ys, n) = path(w, jitter, rnd)
+            if (n < 3) continue
+            val res = SwipeDecoder.decode(xs, ys, n, centers, keyW, lex, emptyMap(), 3)
+            total++
+            if (res.firstOrNull() == w) top1++
+            if (w in res) top3++
+        }
+        return Pair(top1.toDouble() / total, top3.toDouble() / total)
+    }
+
     private fun run(jitter: Float, count: Int = 400): Pair<Double, Double> {
         val rnd = Random(42)
         var top1 = 0
@@ -178,30 +212,30 @@ class SwipeBenchmarkTest {
         assertTrue(t1 <= t3)
     }
 
-    /** Parametrlarni solishtirish: bir nechta variant uchun top-1/top-3 (jitter 0.2 va 0.3). */
+    /** Qatlamli solishtirish: har bir variant uchun mashhur/oʻrta/kam soʻzlarda top-1 va top-3 (jitter 0.25). */
     @Test
-    fun tuningSweep() {
+    fun strataSweep() {
+        val st = strata()
         val configs = listOf(
             "asos" to SwipeDecoder.Tuning(),
-            "prior0.8" to SwipeDecoder.Tuning(priorWeight = 0.8f),
-            "prior1.2" to SwipeDecoder.Tuning(priorWeight = 1.2f),
-            "prior1.8" to SwipeDecoder.Tuning(priorWeight = 1.8f),
-            "len0.25-3.5" to SwipeDecoder.Tuning(lenMin = 0.25f, lenMax = 3.5f),
-            "miss1.5" to SwipeDecoder.Tuning(missFree = 1.5f),
-            "miss0.3" to SwipeDecoder.Tuning(missWeight = 0.3f),
-            "miss0.0" to SwipeDecoder.Tuning(missWeight = 0.0f),
-            "end2.0" to SwipeDecoder.Tuning(endRadius = 2.0f),
-            "kombi1" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f),
-            "kombi2" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
-            "kombi3" to SwipeDecoder.Tuning(priorWeight = 1.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f)
+            "kombi3" to SwipeDecoder.Tuning(priorWeight = 1.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
+            "p1.2" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
+            "p0.8" to SwipeDecoder.Tuning(priorWeight = 0.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
+            "p2.6" to SwipeDecoder.Tuning(priorWeight = 2.6f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
+            "p1.2m0" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.0f, endRadius = 2.0f),
+            "p1.8m0" to SwipeDecoder.Tuning(priorWeight = 1.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.0f, endRadius = 2.0f),
+            "p1.2e1.6" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 1.6f)
         )
         val keep = SwipeDecoder.tuning
         try {
             for ((name, cfg) in configs) {
                 SwipeDecoder.tuning = cfg
-                val a = run(0.2f, 300)
-                val b = run(0.3f, 300)
-                println("TUNE %-12s j0.2 top1=%.3f top3=%.3f | j0.3 top1=%.3f top3=%.3f".format(name, a.first, a.second, b.first, b.second))
+                val sb = StringBuilder("STRATA %-9s".format(name))
+                for ((sn, words) in st) {
+                    val (t1, t3) = runWords(words, 0.25f)
+                    sb.append(" | %s top1=%.3f top3=%.3f".format(sn, t1, t3))
+                }
+                println(sb)
             }
         } finally {
             SwipeDecoder.tuning = keep
