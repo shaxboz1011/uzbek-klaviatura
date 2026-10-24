@@ -28,6 +28,9 @@ WizardStyle=modern
 [Languages]
 Name: "uz"; MessagesFile: "compiler:Default.isl"
 
+[Tasks]
+Name: "autoupdate"; Description: "Yangi versiya chiqsa, xabar berib yangilab turish"; GroupDescription: "Yangilanish:"
+
 [Messages]
 FinishedLabel=Alifbo keyboard layout is installed.%n%nTo use it press Win + Space and pick "Uzbek (Latin 2026) - Alifbo". If it is not in the list yet, sign out and sign in again.
 
@@ -36,6 +39,8 @@ Source: "out\amd64\alifbo26.dll"; DestDir: "{sys}"; Flags: ignoreversion; Check:
 Source: "out\wow64\alifbo26.dll"; DestDir: "{syswow64}"; Flags: ignoreversion; Check: Is64BitInstallMode
 Source: "out\i386\alifbo26.dll"; DestDir: "{sys}"; Flags: ignoreversion; Check: not Is64BitInstallMode
 Source: "addlayout.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "updater.ps1"; DestDir: "{commonappdata}\Alifbo"; Flags: ignoreversion; Tasks: autoupdate
+Source: "registertask.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: autoupdate
 
 [Registry]
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Keyboard Layouts\a0260443"; ValueType: string; ValueName: "Layout File"; ValueData: "alifbo26.dll"; Flags: uninsdeletekey
@@ -43,5 +48,16 @@ Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Keyboard Layouts\a0260443"
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Keyboard Layouts\a0260443"; ValueType: string; ValueName: "Layout Display Name"; ValueData: "@%SystemRoot%\system32\alifbo26.dll,-1000"
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Keyboard Layouts\a0260443"; ValueType: string; ValueName: "Layout Id"; ValueData: "00ca"
 
+Root: HKLM; Subkey: "SOFTWARE\Alifbo"; ValueType: string; ValueName: "Version"; ValueData: "{#AppVersion}"; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "SOFTWARE\Alifbo"; ValueType: dword; ValueName: "AutoUpdate"; ValueData: "1"; Tasks: autoupdate; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "SOFTWARE\Alifbo"; ValueType: dword; ValueName: "AutoUpdate"; ValueData: "0"; Tasks: not autoupdate; Flags: uninsdeletekeyifempty
+
 [Run]
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{tmp}\registertask.ps1"""; Flags: runhidden; Tasks: autoupdate
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{tmp}\addlayout.ps1"""; Flags: runasoriginaluser runhidden
+
+[UninstallRun]
+Filename: "schtasks.exe"; Parameters: "/Delete /TN ""Alifbo Update"" /F"; Flags: runhidden; RunOnceId: "DelTask"
+
+[UninstallDelete]
+Type: files; Name: "{commonappdata}\Alifbo\updater.ps1"

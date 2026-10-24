@@ -14,6 +14,19 @@ import kotlin.math.sqrt
 object SwipeDecoder {
     private const val N = 32
 
+    /** Dekoder parametrlari (testlarda solishtirib sozlanadi; ilovada standart qiymatlar ishlatiladi). */
+    class Tuning(
+        var priorWeight: Float = 1.2f,   // soʻz chastotasining vazni
+        var missWeight: Float = 0.0f,     // yoʻl harf yonidan oʻtmasa jarima
+        var missFree: Float = 1.5f,       // shu masofagacha (tugma kengligida) jarima yoʻq
+        var lenMin: Float = 0.25f,         // ideal yoʻl uzunligi / foydalanuvchi yoʻli uzunligi: eng kichik
+        var lenMax: Float = 3.5f,         // ... eng katta
+        var endRadius: Float = 1.3f       // birinchi/oxirgi harf boshlanish/tugash nuqtasiga eng koʻp qancha yaqin boʻlishi
+    )
+
+    @Volatile
+    var tuning = Tuning()
+
     /** x, y — yoʻl nuqtalari (n ta); centers — harf -> (x, y) tugma markazi; keyW — tugma kengligi. */
     fun decode(
         xs: FloatArray, ys: FloatArray, n: Int,
@@ -33,7 +46,8 @@ object SwipeDecoder {
         val sy = ys[0]
         val ex = xs[n - 1]
         val ey = ys[n - 1]
-        val near = keyW * 1.6f
+        val t = tuning
+        val near = keyW * t.endRadius
 
         val starts = ArrayList<Char>()
         for ((c, p) in centers) if (hypot(p[0] - sx, p[1] - sy) <= near) starts.add(c)
@@ -61,7 +75,7 @@ object SwipeDecoder {
             if (m < 2) return
             var idLen = 0f
             for (i in 1 until m) idLen += hypot(ix[i] - ix[i - 1], iy[i] - iy[i - 1])
-            if (idLen < userLen * 0.4f || idLen > userLen * 2.3f) return
+            if (idLen < userLen * t.lenMin || idLen > userLen * t.lenMax) return
             resample(ix, iy, m, rx, ry)
             var d = 0f
             for (i in 0 until N) d += hypot(rx[i] - ux[i], ry[i] - uy[i])
@@ -75,9 +89,9 @@ object SwipeDecoder {
                     if (dd < best) best = dd
                 }
                 val r = best / keyW
-                if (r > 1.1f) miss += (r - 1.1f)
+                if (r > t.missFree) miss += (r - t.missFree)
             }
-            val score = d + miss * 0.6f - 0.45f * prior
+            val score = d + miss * t.missWeight - t.priorWeight * prior
             val old = cand[w]
             if (old == null || score < old) cand[w] = score
         }

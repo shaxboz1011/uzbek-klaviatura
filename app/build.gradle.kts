@@ -62,6 +62,16 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.all {
+            it.testLogging {
+                events("passed", "failed", "skipped")
+                showStandardStreams = true
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            }
+        }
+    }
+
     buildFeatures {
         buildConfig = true
     }
@@ -87,6 +97,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.activity:activity-ktx:1.9.3")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
 
     // Kameradan matn oʻqish: CameraX + ML Kit (telefonning oʻzida, internetsiz).
     implementation("androidx.camera:camera-core:1.3.4")

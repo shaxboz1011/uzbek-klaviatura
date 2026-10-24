@@ -23,7 +23,10 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import uz.alifbo.keyboard.BuildConfig
 import uz.alifbo.keyboard.data.ClipStore
+import uz.alifbo.keyboard.data.CrashLog
+import uz.alifbo.keyboard.data.ReportBuilder
 import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
@@ -193,6 +196,11 @@ class SettingsActivity : Activity() {
         }
         root.addView(body("«…» tugmasi doim koʻrinadi."))
 
+        // ---- Muammo haqida xabar ----
+        root.addView(section("Muammo haqida xabar"))
+        root.addView(body("Xato yoki noqulaylik topsangiz, hisobot tayyorlang. Unda faqat ilova versiyasi, qurilma modeli, sozlamalar va (bo‘lsa) xato izi bor; yozgan matningiz, bufer va o‘rganilgan so‘zlar kirmaydi. Yuborishdan oldin hisobotni o‘zingiz ko‘rasiz."))
+        root.addView(button("Hisobot tayyorlash") { showReportDialog() })
+
         // ---- Maxfiylik ----
         root.addView(section("Maxfiylik va tozalash"))
         root.addView(button("Oʻrganilgan soʻzlarni oʻchirish") {
@@ -238,6 +246,65 @@ class SettingsActivity : Activity() {
         root.addView(syncBtn)
 
         if (prefs.autoUpdateCheck) checkUpdate(false)
+    }
+
+    private fun showReportDialog() {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }
+        val desc = EditText(this).apply {
+            hint = "Nima boʻldi? (qisqacha yozing)"
+            minLines = 2
+        }
+        box.addView(desc)
+        val hasCrash = CrashLog.last(this) != null
+        val crashCb = CheckBox(this).apply {
+            text = if (hasCrash) "Oxirgi xato izini qoʻshish" else "Xato izi yoʻq"
+            isChecked = hasCrash
+            isEnabled = hasCrash
+        }
+        box.addView(crashCb)
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Hisobot")
+            .setView(box)
+            .setPositiveButton("Koʻrish") { _, _ ->
+                previewReport(ReportBuilder.build(this, desc.text.toString(), crashCb.isChecked))
+            }
+            .setNegativeButton("Bekor", null)
+            .show()
+    }
+
+    private fun previewReport(report: String) {
+        val tv = TextView(this).apply {
+            text = report
+            textSize = 12f
+            setTextIsSelectable(true)
+            setPadding(dp(20), dp(8), dp(20), dp(8))
+        }
+        val sv = ScrollView(this).apply { addView(tv) }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Hisobot (yuborishdan oldin tekshiring)")
+            .setView(sv)
+            .setPositiveButton("GitHub'da yuborish") { _, _ ->
+                val body = report.take(5500)
+                val url = "https://github.com/${BuildConfig.GITHUB_REPO}/issues/new?title=" +
+                    Uri.encode("Muammo: ") + "&body=" + Uri.encode(body)
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Brauzer topilmadi", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNeutralButton("Ulashish") { _, _ ->
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, report), "Hisobotni ulashish"))
+            }
+            .setNegativeButton("Nusxa") { _, _ ->
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("hisobot", report))
+                Toast.makeText(this, "Nusxalandi", Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     private fun checkUpdate(manual: Boolean) {

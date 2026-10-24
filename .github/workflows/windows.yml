@@ -49,6 +49,19 @@ jobs:
           if (-not (Test-Path "$env:SystemRoot\System32\alifbo26.dll")) { throw "DLL System32 da yoʻq" }
           if (-not (Test-Path "$env:SystemRoot\SysWOW64\alifbo26.dll")) { throw "DLL SysWOW64 da yoʻq" }
           windows\test_layout.ps1
+          # yangilovchi: vazifa va versiya yozuvi bor, yangi versiyani taniydi
+          if (-not (Get-ScheduledTask -TaskName 'Alifbo Update' -ErrorAction SilentlyContinue)) { throw "Yangilanish vazifasi yoʻq" }
+          if (-not (Test-Path "$env:ProgramData\Alifbo\updater.ps1")) { throw "updater.ps1 yoʻq" }
+          $ver = (Get-ItemProperty 'HKLM:\SOFTWARE\Alifbo').Version
+          Write-Host "Oʻrnatilgan versiya: $ver"
+          $fake = Join-Path $env:RUNNER_TEMP 'rel.json'
+          '{"tag_name":"v99.0.0","assets":[{"name":"Alifbo-Windows-Setup-v99.0.0.exe","browser_download_url":"https://example.invalid/x.exe"}]}' | Set-Content $fake
+          $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:ProgramData\Alifbo\updater.ps1" -LatestJson $fake -DryRun
+          Write-Host "Yangilovchi: $r"
+          if ("$r" -notmatch 'UPDATE_AVAILABLE 99.0.0') { throw "Yangilovchi yangi versiyani koʻrmadi: $r" }
+          '{"tag_name":"v0.0.0","assets":[]}' | Set-Content $fake
+          $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:ProgramData\Alifbo\updater.ps1" -LatestJson $fake -DryRun
+          if ("$r" -notmatch 'UPTODATE') { throw "Eski versiyada UPTODATE kutilgan: $r" }
 
       - name: Uninstall (silent) and verify cleanup
         shell: pwsh
@@ -58,6 +71,7 @@ jobs:
           Start-Process $u.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait
           Start-Sleep -Seconds 2
           if (Test-Path "$env:SystemRoot\System32\alifbo26.dll") { throw "DLL oʻchirilmadi" }
+          if (Get-ScheduledTask -TaskName 'Alifbo Update' -ErrorAction SilentlyContinue) { throw "Yangilanish vazifasi oʻchirilmadi" }
           if (Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Keyboard Layouts\a0260443') { throw "Reestr kaliti oʻchirilmadi" }
           Write-Host "Tozalash OK"
 
