@@ -59,7 +59,7 @@ jobs:
           $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:ProgramData\Alifbo\updater.ps1" -LatestJson $fake -DryRun
           Write-Host "Yangilovchi: $r"
           if ("$r" -notmatch 'UPDATE_AVAILABLE 99.0.0') { throw "Yangilovchi yangi versiyani koʻrmadi: $r" }
-          '{"tag_name":"v0.0.1","assets":[]}' | Set-Content $fake
+          '{"tag_name":"v0.0.0","assets":[]}' | Set-Content $fake
           $r = & powershell -NoProfile -ExecutionPolicy Bypass -File "$env:ProgramData\Alifbo\updater.ps1" -LatestJson $fake -DryRun
           if ("$r" -notmatch 'UPTODATE') { throw "Eski versiyada UPTODATE kutilgan: $r" }
 
