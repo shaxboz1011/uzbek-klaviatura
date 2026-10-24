@@ -178,6 +178,36 @@ class SwipeBenchmarkTest {
         assertTrue(t1 <= t3)
     }
 
+    /** Parametrlarni solishtirish: bir nechta variant uchun top-1/top-3 (jitter 0.2 va 0.3). */
+    @Test
+    fun tuningSweep() {
+        val configs = listOf(
+            "asos" to SwipeDecoder.Tuning(),
+            "prior0.8" to SwipeDecoder.Tuning(priorWeight = 0.8f),
+            "prior1.2" to SwipeDecoder.Tuning(priorWeight = 1.2f),
+            "prior1.8" to SwipeDecoder.Tuning(priorWeight = 1.8f),
+            "len0.25-3.5" to SwipeDecoder.Tuning(lenMin = 0.25f, lenMax = 3.5f),
+            "miss1.5" to SwipeDecoder.Tuning(missFree = 1.5f),
+            "miss0.3" to SwipeDecoder.Tuning(missWeight = 0.3f),
+            "miss0.0" to SwipeDecoder.Tuning(missWeight = 0.0f),
+            "end2.0" to SwipeDecoder.Tuning(endRadius = 2.0f),
+            "kombi1" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f),
+            "kombi2" to SwipeDecoder.Tuning(priorWeight = 1.2f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f),
+            "kombi3" to SwipeDecoder.Tuning(priorWeight = 1.8f, lenMin = 0.25f, lenMax = 3.5f, missFree = 1.5f, missWeight = 0.3f, endRadius = 2.0f)
+        )
+        val keep = SwipeDecoder.tuning
+        try {
+            for ((name, cfg) in configs) {
+                SwipeDecoder.tuning = cfg
+                val a = run(0.2f, 300)
+                val b = run(0.3f, 300)
+                println("TUNE %-12s j0.2 top1=%.3f top3=%.3f | j0.3 top1=%.3f top3=%.3f".format(name, a.first, a.second, b.first, b.second))
+            }
+        } finally {
+            SwipeDecoder.tuning = keep
+        }
+    }
+
     /** Tashxis: dekoder xato qilgan soʻzlar (birinchi 40 tasi) — sozlash uchun. */
     @Test
     fun printFailures() {
