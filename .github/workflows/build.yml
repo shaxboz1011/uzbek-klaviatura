@@ -50,6 +50,11 @@ jobs:
       - name: Validate alphabet packs
         run: python3 tools/build_registry.py
 
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --no-daemon 2>&1 | tee unit.log
+
       - name: Build debug APK
         run: |
           set -o pipefail

@@ -26,7 +26,7 @@ import uz.alifbo.keyboard.ui.VoiceBridge
 
 class KeyboardService : InputMethodService(),
     KeyboardView.Listener, StripView.Listener, EmojiPanel.Listener, ClipPanel.Listener,
-    MorePanel.Listener, TranslatePanel.Listener {
+    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener {
 
     private var root: KeyboardRoot? = null
     private lateinit var prefs: Prefs
@@ -125,6 +125,7 @@ class KeyboardService : InputMethodService(),
         r.clip.listener = this
         r.more.listener = this
         r.translate.listener = this
+        r.convert.listener = this
         root = r
         reloadPacks()
         return r
@@ -417,6 +418,11 @@ class KeyboardService : InputMethodService(),
                 r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
                 return
             }
+            MorePanel.CONVERT -> {
+                r.showPanel(KeyboardRoot.CONVERT)
+                r.convert.open()
+                return
+            }
             MorePanel.SETTINGS -> {
                 openSettings()
                 return
@@ -435,6 +441,40 @@ class KeyboardService : InputMethodService(),
             refreshSuggestions(false)
             updateShift()
         }
+    }
+
+    // ---------------------------------------------------------------- alifbo oʻgiruvchi
+
+    override fun onConvertBack() {
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+    }
+
+    override fun onConvertSource(): String? {
+        val ic = currentInputConnection ?: return null
+        val sel = ic.getSelectedText(0)
+        if (!sel.isNullOrEmpty()) return sel.toString()
+        val before = ic.getTextBeforeCursor(2000, 0) ?: ""
+        val after = ic.getTextAfterCursor(2000, 0) ?: ""
+        return before.toString() + after.toString()
+    }
+
+    override fun onConvertApply(target: Int) {
+        val ic = currentInputConnection ?: return
+        val sel = ic.getSelectedText(0)
+        ic.beginBatchEdit()
+        if (!sel.isNullOrEmpty()) {
+            ic.commitText(uz.alifbo.keyboard.data.AlphabetTools.convert(sel.toString(), target), 1)
+        } else {
+            val before = ic.getTextBeforeCursor(2000, 0) ?: ""
+            val after = ic.getTextAfterCursor(2000, 0) ?: ""
+            val all = before.toString() + after.toString()
+            ic.deleteSurroundingText(before.length, after.length)
+            ic.commitText(uz.alifbo.keyboard.data.AlphabetTools.convert(all, target), 1)
+        }
+        ic.endBatchEdit()
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+        refreshSuggestions(false)
+        updateShift()
     }
 
     // ---------------------------------------------------------------- tezkor tarjima

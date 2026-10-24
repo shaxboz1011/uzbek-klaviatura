@@ -23,14 +23,7 @@ object LexiconStore {
 
     private fun key(p: LayoutPack) = "${p.id}#${p.version}"
 
-    /** Paketdagi harf tugmalari (kichik harf). Surib yozishda faqat shu harflardan iborat soʻzlar ishlatiladi. */
-    fun letters(pack: LayoutPack): Set<Char> {
-        val set = HashSet<Char>()
-        for (k in pack.rows.flatten() + pack.bottom) {
-            if (!k.isToken && k.label.length == 1 && k.label[0].isLetter()) set.add(k.label[0].lowercaseChar())
-        }
-        return set
-    }
+    fun letters(pack: LayoutPack): Set<Char> = LexiconBuilder.letters(pack)
 
     /** Fonda yuklaydi; tayyor boʻlsa onReady asosiy oqimda emas, fon oqimida chaqiriladi. */
     fun loadAsync(ctx: Context, pack: LayoutPack, onReady: () -> Unit) {
@@ -59,37 +52,12 @@ object LexiconStore {
     private fun build(ctx: Context, pack: LayoutPack): Lexicon {
         val letters = letters(pack)
         val lang = pack.locale.language
-        val modern = 'ş' in letters
-        val words = HashMap<String, Float>()
+        val file = if (lang == "uz" && 'ў' in letters) "uz_cyrl" else lang
         val lines = try {
-            ctx.assets.open("dict/${if (lang == "uz" && 'ў' in letters) "uz_cyrl" else lang}.txt").bufferedReader().use { it.readLines() }
+            ctx.assets.open("dict/$file.txt").bufferedReader().use { it.readLines() }
         } catch (e: Exception) {
             emptyList()
         }
-        var maxLog = 1f
-        val parsed = ArrayList<Pair<String, Float>>(lines.size)
-        for ((i, line) in lines.withIndex()) {
-            val p = line.split('\t')
-            var w = p[0].trim().lowercase().replace('\'', 'ʻ')
-            if (w.isEmpty()) continue
-            if (lang == "uz" && modern) {
-                w = w.replace("oʻ", "ö").replace("gʻ", "ğ").replace("sh", "ş").replace("ch", "ç")
-            }
-            val c = p.getOrNull(1)?.toFloatOrNull() ?: (1_000_000f / (i + 5))
-            val lg = Math.log(1.0 + c).toFloat()
-            if (lg > maxLog) maxLog = lg
-            parsed.add(w to lg)
-        }
-        for ((w, lg) in parsed) {
-            if (w.length < 2 || !w.all { it in letters }) continue
-            val prior = lg / maxLog
-            val old = words[w]
-            if (old == null || prior > old) words[w] = prior
-        }
-        val by = HashMap<Char, ArrayList<Lexicon.Entry>>()
-        for ((w, pr) in words) by.getOrPut(w[0]) { ArrayList() }.add(Lexicon.Entry(w, pr))
-        // Har bir guruh chastota boʻyicha kamayish tartibida: tavsiya berishda birinchi mos kelganlari eng yaxshisi.
-        for (l in by.values) l.sortByDescending { it.prior }
-        return Lexicon(by, HashSet(words.keys))
+        return LexiconBuilder.build(lines, lang, letters)
     }
 }

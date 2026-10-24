@@ -26,6 +26,7 @@ class MorePanel(context: Context) : LinearLayout(context) {
         const val SOUND = 9
         const val SETTINGS = 10
         const val HIDE = 11
+        const val CONVERT = 12
     }
 
     interface Listener {
@@ -79,6 +80,7 @@ class MorePanel(context: Context) : LinearLayout(context) {
             Tile(CURSOR_LEFT, "◀️", "Kursor ←"),
             Tile(CURSOR_RIGHT, "▶️", "Kursor →"),
             Tile(CLEAR, "🗑️", "Hammasini oʻchirish"),
+            Tile(CONVERT, "🔤", "Alifbo oʻgiruvchi"),
             Tile(ONEHAND, "📱", "Bir qoʻl: $oh"),
             Tile(THEME, "🎨", "Mavzu: $th"),
             Tile(SOUND, if (sound) "🔊" else "🔈", "Tovush: " + if (sound) "yoniq" else "oʻchiq"),
