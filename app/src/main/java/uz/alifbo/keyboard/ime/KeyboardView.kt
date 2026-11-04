@@ -249,7 +249,7 @@ class KeyboardView(context: Context) : View(context) {
         val p = pack
         rows = when {
             p == null -> emptyList()
-            symbols -> if (symPage == 1) DefaultLayers.symbols2 else DefaultLayers.symbols
+            symbols -> DefaultLayers.symbolPages[symPage % DefaultLayers.symbolPages.size]
             else -> {
                 val letters = p.rows + listOf(p.bottom)
                 if (numberRow) {
@@ -407,7 +407,7 @@ class KeyboardView(context: Context) : View(context) {
                 "@page" -> {
                     paintText.color = fg
                     paintText.textSize = rowH * 0.28f
-                    drawCentered(c, if (symPage == 0) "1/2" else "2/2", cx, cy, paintText)
+                    drawCentered(c, "${symPage + 1}/${DefaultLayers.symbolPages.size}", cx, cy, paintText)
                 }
                 "@abc" -> {
                     paintText.color = fg
@@ -897,7 +897,7 @@ class KeyboardView(context: Context) : View(context) {
             "@sym" -> setSymbols(true)
             "@abc" -> setSymbols(false)
             "@page" -> {
-                symPage = 1 - symPage
+                symPage = (symPage + 1) % DefaultLayers.symbolPages.size
                 refreshRows()
             }
             "@lang" -> listener?.onLangNext()

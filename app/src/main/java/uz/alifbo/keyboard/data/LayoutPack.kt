@@ -38,7 +38,7 @@ object DefaultLayers {
     private fun k(label: String, w: Float = 1f, vararg alt: String) =
         KeySpec(label, w, alt.toList(), null)
 
-    /** Barcha tillar uchun umumiy raqam/belgilar qatlami (1/2). */
+    /** Barcha tillar uchun umumiy raqam/belgilar qatlami (1/3). */
     val symbols: List<List<KeySpec>> = listOf(
         "1234567890".map { k(it.toString()) },
         listOf(
@@ -54,7 +54,7 @@ object DefaultLayers {
         listOf(k("@abc", 1.5f), k(","), k("@space", 5f), k("."), k("@enter", 1.5f))
     )
 
-    /** Belgilar qatlami (2/2). */
+    /** Belgilar qatlami (2/3). */
     val symbols2: List<List<KeySpec>> = listOf(
         "1234567890".map { k(it.toString()) },
         listOf(
@@ -67,6 +67,22 @@ object DefaultLayers {
         ),
         listOf(k("@abc", 1.5f), k("<", 1f, "≤", "«", "[", "{"), k("@space", 5f), k(">", 1f, "≥", "»", "]", "}"), k("@enter", 1.5f))
     )
+
+    /** Qavslar va qoʻshimcha belgilar (3/3). */
+    val symbols3: List<List<KeySpec>> = listOf(
+        "1234567890".map { k(it.toString()) },
+        listOf(
+            k("["), k("]"), k("{"), k("}"), k("\\"), k("_"), k("«"), k("»"), k("“"), k("”")
+        ),
+        listOf(
+            k("@page", 1.5f),
+            k("©"), k("®"), k("™"), k("✓"), k("≈"), k("≠"), k("±"),
+            k("@del", 1.5f)
+        ),
+        listOf(k("@abc", 1.5f), k(","), k("@space", 5f), k(".", 1f, "…"), k("@enter", 1.5f))
+    )
+
+    val symbolPages: List<List<List<KeySpec>>> = listOf(symbols, symbols2, symbols3)
 }
 
 object PackParser {
