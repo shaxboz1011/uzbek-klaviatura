@@ -163,6 +163,20 @@ class Prefs(context: Context) {
             sp.edit().putInt("oneHanded", v).apply()
         }
 
+    /** Boʻsh maydonda eng oxirgi nusxalangan matnni tavsiya qilish. */
+    var recentClipChip: Boolean
+        get() = sp.getBoolean("recentClipChip", true)
+        set(v) {
+            sp.edit().putBoolean("recentClipChip", v).apply()
+        }
+
+    /** Boʻsh maydonda eng oxirgi skrinshotni tavsiya qilish (rasmlarga kirish ruxsati kerak). */
+    var recentScreenshotChip: Boolean
+        get() = sp.getBoolean("recentScreenshotChip", false)
+        set(v) {
+            sp.edit().putBoolean("recentScreenshotChip", v).apply()
+        }
+
     var suggestions: Boolean
         get() = sp.getBoolean("suggestions", true)
         set(v) {

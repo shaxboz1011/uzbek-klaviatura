@@ -1,7 +1,9 @@
 package uz.alifbo.keyboard.ime
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Path
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -18,7 +20,12 @@ class StripView(context: Context) : View(context) {
     interface Listener {
         fun onTool(id: Int)
         fun onSuggestion(text: String)
+        fun onChip(index: Int)
+        fun onChipsDismiss()
     }
+
+    /** Boʻsh maydonda koʻrsatiladigan "eng oxirgi" taklif: nusxalangan matn yoki skrinshot (thumb). */
+    class Chip(val text: String, val thumb: Bitmap? = null)
 
     companion object {
         const val EMOJI = 0
@@ -36,6 +43,7 @@ class StripView(context: Context) : View(context) {
     var listener: Listener? = null
 
     private var suggestions: List<String> = emptyList()
+    private var chips: List<Chip> = emptyList()
     private var tools = ORDER.copyOf()
     private var pressed = -1
 
@@ -85,15 +93,44 @@ class StripView(context: Context) : View(context) {
         }
     }
 
+    fun setChips(list: List<Chip>) {
+        if (list.size != chips.size || list.indices.any { list[it].text != chips[it].text || list[it].thumb !== chips[it].thumb }) {
+            chips = list
+            pressed = -1
+            invalidate()
+        }
+    }
+
+    private fun chipMode() = suggestions.isEmpty() && chips.isNotEmpty()
+
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), (44 * density).toInt())
     }
 
-    private fun cellCount() = if (suggestions.isNotEmpty()) suggestions.size else tools.size
+    private fun cellCount() = when {
+        suggestions.isNotEmpty() -> suggestions.size
+        chipMode() -> chips.size + 1 // oxirgisi — yopish (✕)
+        else -> tools.size
+    }
+
+    /** Katak chegaralari (n + 1 ta qiymat). Tavsiya va asboblarda teng, chiplarda matn kengroq, ✕ tor. */
+    private fun bounds(): FloatArray {
+        val n = cellCount()
+        val w = FloatArray(n) { 1f }
+        if (chipMode()) {
+            for (i in chips.indices) w[i] = if (chips[i].thumb != null) 1.4f else 3f
+            w[n - 1] = 0.7f
+        }
+        val sum = w.sum()
+        val b = FloatArray(n + 1)
+        for (i in 0 until n) b[i + 1] = b[i] + width.toFloat() * w[i] / sum
+        return b
+    }
 
     private fun cellAt(x: Float): Int {
-        val n = cellCount()
-        return (x / (width.toFloat() / n)).toInt().coerceIn(0, n - 1)
+        val b = bounds()
+        for (i in 0 until b.size - 1) if (x < b[i + 1]) return i
+        return b.size - 2
     }
 
     override fun onDraw(c: Canvas) {
@@ -102,12 +139,18 @@ class StripView(context: Context) : View(context) {
         c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
 
         val n = cellCount()
+        val b = bounds()
         val cw = width.toFloat() / n
         val cy = height / 2f
 
+        if (chipMode()) {
+            drawChips(c, b, cy)
+            return
+        }
+
         if (pressed in 0 until n) {
             paint.color = colPressed
-            rect.set(pressed * cw + 4 * density, 4 * density, (pressed + 1) * cw - 4 * density, height - 4 * density)
+            rect.set(b[pressed] + 4 * density, 4 * density, b[pressed + 1] - 4 * density, height - 4 * density)
             c.drawRoundRect(rect, 10 * density, 10 * density, paint)
         }
 
@@ -129,6 +172,46 @@ class StripView(context: Context) : View(context) {
         for (i in 0 until n) {
             drawTool(c, tools[i], i * cw + cw / 2f, cy, 9f * density)
         }
+    }
+
+    private fun drawChips(c: Canvas, b: FloatArray, cy: Float) {
+        val pad = 4 * density
+        for (i in chips.indices) {
+            val ch = chips[i]
+            rect.set(b[i] + pad, pad, b[i + 1] - pad, height - pad)
+            paint.style = Paint.Style.FILL
+            paint.color = if (pressed == i) colAccent and 0x00FFFFFF or 0x55000000 else colPressed
+            c.drawRoundRect(rect, 12 * density, 12 * density, paint)
+            val thumb = ch.thumb
+            if (thumb != null) {
+                val clip = Path().apply { addRoundRect(rect, 12 * density, 12 * density, Path.Direction.CW) }
+                c.save()
+                c.clipPath(clip)
+                val sc = maxOf(rect.width() / thumb.width, rect.height() / thumb.height)
+                val dw = thumb.width * sc
+                val dh = thumb.height * sc
+                val l = rect.left + (rect.width() - dw) / 2f
+                val t = rect.top + (rect.height() - dh) / 2f
+                c.drawBitmap(thumb, null, android.graphics.RectF(l, t, l + dw, t + dh), null)
+                c.restore()
+            } else {
+                text.textSize = 15f * density
+                text.color = colText
+                text.typeface = Typeface.DEFAULT
+                val avail = rect.width() - 20 * density
+                val one = ch.text.replace('\n', ' ')
+                val cut = text.breakText(one, true, avail, null)
+                val shown = if (cut < one.length) one.substring(0, maxOf(0, cut - 1)) + "…" else one
+                c.drawText(shown, rect.centerX(), cy - (text.ascent() + text.descent()) / 2f, text)
+            }
+        }
+        val last = chips.size
+        val cx = (b[last] + b[last + 1]) / 2f
+        val s = 6 * density
+        paint.style = Paint.Style.STROKE
+        paint.color = if (pressed == last) colText else colHint
+        c.drawLine(cx - s, cy - s, cx + s, cy + s, paint)
+        c.drawLine(cx - s, cy + s, cx + s, cy - s, paint)
     }
 
     private fun drawTool(c: Canvas, id: Int, cx: Float, cy: Float, s: Float) {
@@ -216,6 +299,8 @@ class StripView(context: Context) : View(context) {
                 if (was == c) {
                     if (suggestions.isNotEmpty()) {
                         if (c < suggestions.size) listener?.onSuggestion(suggestions[c])
+                    } else if (chipMode()) {
+                        if (c < chips.size) listener?.onChip(c) else listener?.onChipsDismiss()
                     } else {
                         listener?.onTool(tools[c])
                     }

@@ -30,6 +30,7 @@ import uz.alifbo.keyboard.data.ReportBuilder
 import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
+import uz.alifbo.keyboard.data.Recents
 import uz.alifbo.keyboard.data.RemoteSync
 import uz.alifbo.keyboard.ime.Theme
 import uz.alifbo.keyboard.update.Updater
@@ -171,6 +172,15 @@ class SettingsActivity : Activity() {
         root.addView(section("Yozish"))
         switchRow(root, "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)", prefs.swipe) { prefs.swipe = it }
         switchRow(root, "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)", prefs.suggestions) { prefs.suggestions = it }
+        switchRow(root, "Boʻsh maydonda oxirgi nusxalangan matnni tavsiya qilish", prefs.recentClipChip) { prefs.recentClipChip = it }
+        switchRow(root, "Boʻsh maydonda oxirgi skrinshotni tavsiya qilish (rasmlarga kirish ruxsati kerak)", prefs.recentScreenshotChip) { on ->
+            prefs.recentScreenshotChip = on
+            if (on && !Recents.hasImageAccess(this)) {
+                val perm = if (Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_IMAGES
+                else android.Manifest.permission.READ_EXTERNAL_STORAGE
+                requestPermissions(arrayOf(perm), 2)
+            }
+        }
         switchRow(root, "Avto-tuzatish (sinov): xato yozilgan soʻzni tuzatadi; ⌫ — bekor qilish", prefs.autoCorrect) { prefs.autoCorrect = it }
         switchRow(root, "Gap boshida avtomatik bosh harf", prefs.autoCap) { prefs.autoCap = it }
         switchRow(root, "Ikki marta boʻsh joy — nuqta va boʻsh joy", prefs.doubleSpacePeriod) { prefs.doubleSpacePeriod = it }

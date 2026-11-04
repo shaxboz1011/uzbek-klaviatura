@@ -1,6 +1,7 @@
 package uz.alifbo.keyboard.ime
 
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.res.Configuration
@@ -11,6 +12,10 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.core.view.inputmethod.EditorInfoCompat
+import androidx.core.view.inputmethod.InputConnectionCompat
+import androidx.core.view.inputmethod.InputContentInfoCompat
+import uz.alifbo.keyboard.data.Recents
 import uz.alifbo.keyboard.data.Autocorrect
 import uz.alifbo.keyboard.data.ClipStore
 import uz.alifbo.keyboard.data.LayoutPack
@@ -75,6 +80,16 @@ class KeyboardService : InputMethodService(),
     private val storeListener: () -> Unit = { reloadPacks() }
 
     private var lastClipText: String? = null
+    private var lastClipAtMs = 0L
+
+    // Boʻsh maydonda "eng oxirgi" tavsiyalar (nusxalangan matn, skrinshot)
+    private var chipActions: List<() -> Unit> = emptyList()
+    private var chipClipText: String? = null
+    private var chipShot: Recents.Shot? = null
+    private var dismissedClip: String? = null
+    private var dismissedShot: android.net.Uri? = null
+    private var chipGen = 0
+    private val bgExec = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener { captureClip(true) }
 
@@ -90,8 +105,14 @@ class KeyboardService : InputMethodService(),
             if (clip.itemCount == 0) return true
             // Parol menejerlari va boshqalar "maxfiy" deb belgilagan nusxalar saqlanmaydi.
             if (clip.description.extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true) return true
-            val t = clip.getItemAt(0).coerceToText(this).toString()
-            if (force || t != lastClipText) ClipStore.add(this, t)
+            val item = clip.getItemAt(0)
+            // Faqat rasm/fayl (matnsiz) nusxalari — masalan, skrinshot — matn tarixiga tushmaydi.
+            if (item.text == null && item.uri != null) return true
+            val t = item.coerceToText(this).toString()
+            if (force || t != lastClipText) {
+                ClipStore.add(this, t)
+                lastClipAtMs = if (android.os.Build.VERSION.SDK_INT >= 26) clip.description.timestamp else System.currentTimeMillis()
+            }
             lastClipText = t
             return true
         } catch (e: Exception) {
@@ -159,6 +180,7 @@ class KeyboardService : InputMethodService(),
         prevWord = ""
         swipeWord = null
         r.strip.setSuggestions(emptyList())
+        refreshChips()
 
         when (info.inputType and InputType.TYPE_MASK_CLASS) {
             InputType.TYPE_CLASS_NUMBER,
@@ -253,6 +275,7 @@ class KeyboardService : InputMethodService(),
     /** Matn o'zgargandan keyin tavsiyalarni yangilaydi; so'z tugagan bo'lsa uni o'rganadi. */
     private fun refreshSuggestions(boundary: Boolean) {
         val r = root ?: return
+        clearChips()
         if (!suggestOn) {
             r.strip.setSuggestions(emptyList())
             return
@@ -263,6 +286,98 @@ class KeyboardService : InputMethodService(),
         if (boundary && learnOn && prevWord.length >= 2) Predictor.learn(this, prevWord)
         prevWord = cur
         r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3, currentLexicon()))
+    }
+
+    // ---------------------------------------------------------------- "eng oxirgi" tavsiyalar
+
+    private fun clearChips() {
+        chipGen++
+        chipActions = emptyList()
+        root?.strip?.setChips(emptyList())
+    }
+
+    /** Maydon boʻsh boʻlsa: yaqinda nusxalangan matn va yaqinda olingan skrinshotni chip sifatida koʻrsatadi. */
+    private fun refreshChips() {
+        clearChips()
+        val r = root ?: return
+        if (secretField) return
+        val ic = currentInputConnection ?: return
+        val empty = ic.getTextBeforeCursor(1, 0).isNullOrEmpty() && ic.getTextAfterCursor(1, 0).isNullOrEmpty()
+        if (!empty) return
+        val gen = chipGen
+        val now = System.currentTimeMillis()
+
+        val clip = lastClipText
+        chipClipText = if (prefs.recentClipChip && clip != null && clip.isNotBlank() && clip != dismissedClip &&
+            now - lastClipAtMs <= Recents.FRESH_MS) clip else null
+
+        chipShot = null
+        showChips(null)
+        if (!prefs.recentScreenshotChip) return
+        bgExec.execute {
+            val shot = Recents.latestScreenshot(this)
+            if (shot == null || shot.uri == dismissedShot) return@execute
+            val thumb = Recents.thumbnail(this, shot.uri, (160 * resources.displayMetrics.density).toInt())
+            r.post {
+                if (gen != chipGen) return@post
+                chipShot = shot
+                showChips(thumb)
+            }
+        }
+    }
+
+    private fun showChips(thumb: android.graphics.Bitmap?) {
+        val chips = ArrayList<StripView.Chip>()
+        val actions = ArrayList<() -> Unit>()
+        val shot = chipShot
+        if (shot != null) {
+            chips.add(StripView.Chip("Skrinshot", thumb))
+            actions.add { insertScreenshot(shot) }
+        }
+        val clip = chipClipText
+        if (clip != null) {
+            chips.add(StripView.Chip(clip))
+            actions.add {
+                currentInputConnection?.commitText(clip, 1)
+                updateShift()
+            }
+        }
+        chipActions = actions
+        root?.strip?.setChips(chips)
+    }
+
+    override fun onChip(index: Int) {
+        val a = chipActions.getOrNull(index) ?: return
+        dismissedClip = chipClipText ?: dismissedClip
+        dismissedShot = chipShot?.uri ?: dismissedShot
+        clearChips()
+        a()
+        refreshSuggestions(false)
+    }
+
+    override fun onChipsDismiss() {
+        dismissedClip = chipClipText ?: dismissedClip
+        dismissedShot = chipShot?.uri ?: dismissedShot
+        clearChips()
+    }
+
+    /** Rasmni qabul qiladigan maydonga toʻgʻridan-toʻgʻri qoʻyadi, aks holda buferga nusxalaydi. */
+    private fun insertScreenshot(shot: Recents.Shot) {
+        val ic = currentInputConnection ?: return
+        val ei = currentInputEditorInfo
+        val accepts = EditorInfoCompat.getContentMimeTypes(ei).any { ClipDescription.compareMimeTypes(shot.mime, it) }
+        if (accepts) {
+            val info = InputContentInfoCompat(shot.uri, ClipDescription("skrinshot", arrayOf(shot.mime)), null)
+            val flags = if (android.os.Build.VERSION.SDK_INT >= 25) InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION else 0
+            if (InputConnectionCompat.commitContent(ic, ei, info, flags, null)) return
+        }
+        try {
+            (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager)
+                .setPrimaryClip(ClipData.newUri(contentResolver, "skrinshot", shot.uri))
+            Toast.makeText(this, "Skrinshot buferga nusxalandi — kerakli joyda «Qoʻyish»ni bosing", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Bu maydon rasmni qabul qilmaydi", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onSuggestion(text: String) {
