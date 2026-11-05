@@ -70,6 +70,14 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Keyboard screenshots (rendered by unit tests)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: keyboard-screenshots
+          path: app/build/screenshots/*.png
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         with:
           name: alifbo-klaviatura-debug
