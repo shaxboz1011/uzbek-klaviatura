@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="kb_bg">#17191D</color>
-    <color name="kb_key">#3A3D42</color>
-    <color name="kb_key_special">#2A2C30</color>
-    <color name="kb_key_pressed">#585C63</color>
-    <color name="kb_text">#ECEFF1</color>
-    <color name="kb_hint">#9AA0A6</color>
+    <color name="kb_bg">#101312</color>
+    <color name="kb_key">#2B302D</color>
+    <color name="kb_key_special">#252927</color>
+    <color name="kb_key_pressed">#454B47</color>
+    <color name="kb_text">#F1F3F1</color>
+    <color name="kb_hint">#8E948F</color>
     <color name="kb_accent">#8AB4F8</color>
-    <color name="kb_popup">#2F3237</color>
-    <color name="kb_key_shadow">#0D0E10</color>
+    <color name="kb_popup">#3A403C</color>
+    <color name="kb_key_shadow">#060807</color>
+    <color name="kb_chip">#2F3532</color>
 </resources>

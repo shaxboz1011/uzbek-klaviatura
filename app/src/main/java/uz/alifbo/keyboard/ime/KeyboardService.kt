@@ -17,6 +17,7 @@ import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import uz.alifbo.keyboard.data.Recents
 import uz.alifbo.keyboard.data.Autocorrect
+import uz.alifbo.keyboard.data.Bigrams
 import uz.alifbo.keyboard.data.ClipStore
 import uz.alifbo.keyboard.data.LayoutPack
 import uz.alifbo.keyboard.data.LexiconStore
@@ -31,7 +32,7 @@ import uz.alifbo.keyboard.ui.VoiceBridge
 
 class KeyboardService : InputMethodService(),
     KeyboardView.Listener, StripView.Listener, EmojiPanel.Listener, ClipPanel.Listener,
-    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener {
+    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener, EditPanel.Listener {
 
     private var root: KeyboardRoot? = null
     private lateinit var prefs: Prefs
@@ -51,7 +52,7 @@ class KeyboardService : InputMethodService(),
     private val liveKeys = setOf(
         "keyRadius", "keyGap", "textScale", "keyShadow", "bottomPad", "hapticMs", "longPressMs", "cursorStep",
         "autoCap", "toolsMask", "theme", "accent", "height", "soundVol", "sound", "haptic", "keyPreview",
-        "numberRow", "swipe", "oneHanded", "stylePreset"
+        "numberRow", "swipe", "oneHanded", "stylePreset", "mixedLang"
     )
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in liveKeys) applyLive()
@@ -61,8 +62,10 @@ class KeyboardService : InputMethodService(),
     private fun applyLive() {
         if (root != null && builtTheme != themeSig()) setInputView(onCreateInputView())
         val r = root ?: return
+        if (prefs.mixedLang) (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.let { LexiconStore.loadExtrasAsync(this, it) {} }
         r.reloadColors()
         r.strip.setToolsMask(prefs.toolsMask)
+        r.strip.setBadges(StripView.NEW_MASK and prefs.seenTools.inv())
         val v = r.keyboard
         v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
         v.setSoundVolume(prefs.soundVolume)
@@ -75,6 +78,8 @@ class KeyboardService : InputMethodService(),
     private var suggestOn = true
     private var learnOn = true
     private var prevWord = ""
+    /** Oxirgi tugallangan soʻz (keyingi soʻz bashorati uchun); jumla tugasa yoki maydon almashsa boʻshaydi. */
+    private var lastWord = ""
 
     // Serverdan yangi alifbo kelganda klaviatura ochiq turgan bo'lsa ham darrov almashadi.
     private val storeListener: () -> Unit = { reloadPacks() }
@@ -133,6 +138,7 @@ class KeyboardService : InputMethodService(),
         PackStore.removeListener(storeListener)
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipListener)
         Predictor.save(this)
+        Bigrams.save(this)
         super.onDestroy()
     }
 
@@ -142,6 +148,7 @@ class KeyboardService : InputMethodService(),
         r.keyboard.listener = this
         r.keyboard.learnedWords = { if (learnOn) Predictor.snapshot(this) else emptyMap() }
         r.strip.listener = this
+        r.edit.listener = this
         r.emoji.listener = this
         r.clip.listener = this
         r.more.listener = this
@@ -178,6 +185,7 @@ class KeyboardService : InputMethodService(),
         suggestOn = prefs.suggestions && !secret
         learnOn = suggestOn && (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
         prevWord = ""
+        lastWord = ""
         swipeWord = null
         r.strip.setSuggestions(emptyList())
         refreshChips()
@@ -202,6 +210,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onFinishInputView(finishingInput: Boolean) {
         Predictor.save(this)
+        Bigrams.save(this)
         super.onFinishInputView(finishingInput)
     }
 
@@ -237,9 +246,17 @@ class KeyboardService : InputMethodService(),
     private fun currentLexicon() =
         (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.let { LexiconStore.get(it) }
 
+    /** Aralash tilda yozish yoqilgan boʻlsa, joriy alifbo bilan birga tavsiya beriladigan boshqa til lugʻatlari. */
+    private fun currentExtras(): List<uz.alifbo.keyboard.data.Lexicon> {
+        if (!prefs.mixedLang) return emptyList()
+        val p = packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull() ?: return emptyList()
+        return LexiconStore.extras(p)
+    }
+
     private fun applyPack(p: LayoutPack) {
         root?.keyboard?.setPack(p)
         LexiconStore.loadAsync(this, p) {}
+        if (prefs.mixedLang) LexiconStore.loadExtrasAsync(this, p) {}
     }
 
     private fun enterLabelFor(info: EditorInfo): String? {
@@ -283,9 +300,24 @@ class KeyboardService : InputMethodService(),
         val ic = currentInputConnection ?: return
         val before = ic.getTextBeforeCursor(40, 0) ?: ""
         val cur = trailingWord(before)
-        if (boundary && learnOn && prevWord.length >= 2) Predictor.learn(this, prevWord)
+        if (boundary && learnOn && prevWord.length >= 2) {
+            Predictor.learn(this, prevWord)
+            if (prefs.nextWord) {
+                if (lastWord.isNotEmpty()) Bigrams.learn(this, lastWord, prevWord)
+                lastWord = prevWord
+            }
+            // Jumla tugadi: keyingi jumla oldingi soʻzga bogʻlanmasin
+            if (before.trimEnd().lastOrNull() in setOf('.', '!', '?')) lastWord = ""
+        }
         prevWord = cur
-        r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3, currentLexicon()))
+        r.strip.setSuggestions(
+            when {
+                cur.isNotEmpty() -> Predictor.suggest(this, cur, 3, currentLexicon(), currentExtras())
+                prefs.nextWord && lastWord.isNotEmpty() && before.lastOrNull()?.isWhitespace() == true ->
+                    Bigrams.next(this, lastWord, 3)
+                else -> emptyList()
+            }
+        )
     }
 
     // ---------------------------------------------------------------- "eng oxirgi" tavsiyalar
@@ -344,6 +376,32 @@ class KeyboardService : InputMethodService(),
         }
         chipActions = actions
         root?.strip?.setChips(chips)
+    }
+
+    override fun onToolKey(id: Int) = onTool(id)
+
+    // ---------------------------------------------------------------- matn tahrirlash paneli
+
+    override fun onEditKey(keyCode: Int, ctrl: Boolean, shift: Boolean) {
+        val ic = currentInputConnection ?: return
+        var meta = 0
+        if (ctrl) meta = meta or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        if (shift) meta = meta or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+        val t = android.os.SystemClock.uptimeMillis()
+        ic.sendKeyEvent(KeyEvent(t, t, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+        ic.sendKeyEvent(KeyEvent(t, t, KeyEvent.ACTION_UP, keyCode, 0, meta))
+    }
+
+    override fun onEditAction(id: Int) {
+        val ic = currentInputConnection ?: return
+        when (id) {
+            EditPanel.SELECT_ALL -> ic.performContextMenuAction(android.R.id.selectAll)
+            EditPanel.CUT -> ic.performContextMenuAction(android.R.id.cut)
+            EditPanel.COPY -> ic.performContextMenuAction(android.R.id.copy)
+            EditPanel.PASTE -> ic.performContextMenuAction(android.R.id.paste)
+            EditPanel.UNDO -> onEditKey(KeyEvent.KEYCODE_Z, true, false)
+            EditPanel.REDO -> onEditKey(KeyEvent.KEYCODE_Z, true, true)
+        }
     }
 
     override fun onChip(index: Int) {
@@ -405,15 +463,29 @@ class KeyboardService : InputMethodService(),
         ic.commitText("$out ", 1)
         ic.endBatchEdit()
         if (learnOn) Predictor.learn(this, out)
+        rememberWord(out)
         prevWord = ""
-        root?.strip?.setSuggestions(emptyList())
         updateShift()
+        refreshSuggestions(false) // keyingi soʻz tavsiyalarini darrov koʻrsatadi
+    }
+
+    /** Tavsiya yoki surib yozish bilan kiritilgan soʻzni keyingi soʻz bashorati uchun eslab qoladi. */
+    private fun rememberWord(w: String) {
+        if (!learnOn || !prefs.nextWord) return
+        val k = w.lowercase()
+        if (lastWord.isNotEmpty()) Bigrams.learn(this, lastWord, k)
+        lastWord = k
     }
 
     // ---------------------------------------------------------------- asboblar qatori
 
     override fun onTool(id: Int) {
         val r = root ?: return
+        // "Yangi" nuqtasi ochilgach yoʻqoladi
+        if (StripView.NEW_MASK and (1 shl id) != 0 && prefs.seenTools and (1 shl id) == 0) {
+            prefs.seenTools = prefs.seenTools or (1 shl id)
+            r.strip.setBadges(StripView.NEW_MASK and prefs.seenTools.inv())
+        }
         when (id) {
             StripView.EMOJI -> {
                 r.emoji.show(prefs.emojiRecents)
@@ -427,6 +499,10 @@ class KeyboardService : InputMethodService(),
                 val access = captureClip(false)
                 r.clip.show(ClipStore.list(this), access)
                 r.showPanel(KeyboardRoot.CLIP)
+            }
+            StripView.EDIT -> {
+                r.edit.reset()
+                r.showPanel(KeyboardRoot.EDIT)
             }
             StripView.VOICE -> startVoice()
             StripView.SCAN -> startActivity(
@@ -649,7 +725,8 @@ class KeyboardService : InputMethodService(),
         if (cur.isEmpty()) return false
         val lex = currentLexicon() ?: return false
         val known = Predictor.snapshot(this)
-        val fixed = Autocorrect.correct(cur, lex) { it in known } ?: return false
+        val extras = currentExtras()
+        val fixed = Autocorrect.correct(cur, lex) { it in known || extras.any { x -> x.contains(it) } } ?: return false
         val out = Autocorrect.matchCase(cur, fixed)
         ic.beginBatchEdit()
         ic.deleteSurroundingText(cur.length, 0)
@@ -666,6 +743,7 @@ class KeyboardService : InputMethodService(),
         val lead = if (!b.isNullOrEmpty() && (b[0].isLetterOrDigit() || b[0] in ".,!?:;)")) " " else ""
         ic.commitText("$lead$best ", 1)
         if (learnOn) Predictor.learn(this, best.lowercase())
+        rememberWord(best)
         updateShift()
         prevWord = ""
         swipeWord = best

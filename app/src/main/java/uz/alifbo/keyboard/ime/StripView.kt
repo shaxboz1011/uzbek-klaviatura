@@ -35,9 +35,13 @@ class StripView(context: Context) : View(context) {
         const val SETTINGS = 4
         const val MORE = 5
         const val SCAN = 6
+        const val EDIT = 7
+
+        /** "Yangi" deb belgilanadigan asboblar (toʻq sariq nuqta, ochilgach yoʻqoladi). */
+        const val NEW_MASK = (1 shl SCAN) or (1 shl EDIT) or (1 shl MORE)
 
         /** Qatordagi koʻrinish tartibi (id lar oʻzgarmaydi). */
-        private val ORDER = intArrayOf(EMOJI, TRANSLATE, SCAN, CLIP, VOICE, SETTINGS, MORE)
+        private val ORDER = intArrayOf(EMOJI, TRANSLATE, SCAN, EDIT, CLIP, VOICE, SETTINGS, MORE)
     }
 
     var listener: Listener? = null
@@ -57,6 +61,8 @@ class StripView(context: Context) : View(context) {
     private var colHint = 0
     private var colPressed = 0
     private var colAccent = 0
+    private var colChip = 0
+    private var badges = 0
 
     init {
         reloadColors()
@@ -71,6 +77,7 @@ class StripView(context: Context) : View(context) {
         colHint = Theme.col(context, R.color.kb_hint)
         colPressed = Theme.col(context, R.color.kb_key_pressed)
         colAccent = Theme.accent(context)
+        colChip = Theme.col(context, R.color.kb_chip)
         invalidate()
     }
 
@@ -81,6 +88,14 @@ class StripView(context: Context) : View(context) {
         if (!t.contentEquals(tools)) {
             tools = t
             pressed = -1
+            invalidate()
+        }
+    }
+
+    /** Toʻq sariq "yangi" nuqtasi koʻrinadigan asboblar (bit niqobi). */
+    fun setBadges(mask: Int) {
+        if (mask != badges) {
+            badges = mask
             invalidate()
         }
     }
@@ -104,7 +119,7 @@ class StripView(context: Context) : View(context) {
     private fun chipMode() = suggestions.isEmpty() && chips.isNotEmpty()
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthSpec), (44 * density).toInt())
+        setMeasuredDimension(MeasureSpec.getSize(widthSpec), (48 * density).toInt())
     }
 
     private fun cellCount() = when {
@@ -148,7 +163,8 @@ class StripView(context: Context) : View(context) {
             return
         }
 
-        if (pressed in 0 until n) {
+        val toolMode = suggestions.isEmpty()
+        if (pressed in 0 until n && !toolMode) {
             paint.color = colPressed
             rect.set(b[pressed] + 4 * density, 4 * density, b[pressed + 1] - 4 * density, height - 4 * density)
             c.drawRoundRect(rect, 10 * density, 10 * density, paint)
@@ -169,8 +185,19 @@ class StripView(context: Context) : View(context) {
             return
         }
 
+        // Samsung kabi: har bir asbob doira ichida
+        val r = minOf(cw / 2f - 7 * density, height * 0.36f)
         for (i in 0 until n) {
-            drawTool(c, tools[i], i * cw + cw / 2f, cy, 9f * density)
+            val cx = i * cw + cw / 2f
+            paint.style = Paint.Style.FILL
+            paint.color = if (pressed == i) colPressed else colChip
+            c.drawCircle(cx, cy, r, paint)
+            drawTool(c, tools[i], cx, cy, r * 0.5f)
+            if (badges and (1 shl tools[i]) != 0) {
+                paint.style = Paint.Style.FILL
+                paint.color = 0xFFFF6A00.toInt()
+                c.drawCircle(cx + r * 0.75f, cy - r * 0.75f, 3.2f * density, paint)
+            }
         }
     }
 
@@ -269,6 +296,19 @@ class StripView(context: Context) : View(context) {
                 rect.set(cx - s * 0.4f, cy - s * 0.95f, cx + s * 0.4f, cy - s * 0.6f)
                 c.drawRoundRect(rect, s * 0.12f, s * 0.12f, paint)
                 c.drawCircle(cx, cy + s * 0.12f, s * 0.38f, paint)
+            }
+            EDIT -> {
+                // toʻrt tomonga strelkalar (kursor boshqaruvi)
+                val a = s * 1.05f
+                val t = s * 0.32f
+                c.drawLine(cx - a, cy, cx - a + t, cy - t, paint)
+                c.drawLine(cx - a, cy, cx - a + t, cy + t, paint)
+                c.drawLine(cx + a, cy, cx + a - t, cy - t, paint)
+                c.drawLine(cx + a, cy, cx + a - t, cy + t, paint)
+                c.drawLine(cx, cy - a, cx - t, cy - a + t, paint)
+                c.drawLine(cx, cy - a, cx + t, cy - a + t, paint)
+                c.drawLine(cx, cy + a, cx - t, cy + a - t, paint)
+                c.drawLine(cx, cy + a, cx + t, cy + a - t, paint)
             }
             MORE -> {
                 paint.style = Paint.Style.FILL

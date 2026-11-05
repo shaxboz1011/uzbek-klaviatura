@@ -53,7 +53,7 @@ object Predictor {
      * Oʻrganilgan soʻzlar ustun (qancha koʻp ishlatilsa, shuncha yuqori).
      */
     @Synchronized
-    fun suggest(ctx: Context, prefix: String, max: Int, lex: Lexicon? = null): List<String> {
+    fun suggest(ctx: Context, prefix: String, max: Int, lex: Lexicon? = null, extras: List<Lexicon> = emptyList()): List<String> {
         ensure(ctx)
         val p = prefix.lowercase()
         if (p.isEmpty()) return emptyList()
@@ -61,21 +61,28 @@ object Predictor {
         for (e in words.entries) {
             if (e.key.startsWith(p) && e.key != p) scored[e.key] = 0.6f + minOf(e.value, 20) / 50f
         }
-        val list = lex?.byFirst?.get(p[0])
-        if (list != null) {
-            var found = 0
-            for (en in list) { // chastota boʻyicha tartiblangan
-                if (en.word.length > p.length && en.word.startsWith(p)) {
-                    val s = en.prior * 0.9f
-                    if (s > (scored[en.word] ?: 0f)) scored[en.word] = s
-                    if (++found >= max * 3) break
-                }
-            }
-        }
+        addMatches(scored, p, lex, 0.9f, max * 3)
+        // Boshqa til soʻzlari biroz pastroq vazn bilan; bitta harfda aralashtirilmaydi (shovqin boʻlmasin).
+        if (p.length >= 2) for (x in extras) addMatches(scored, p, x, EXTRA_WEIGHT, max * 3)
         return scored.entries
             .sortedWith(compareByDescending<Map.Entry<String, Float>> { it.value }.thenBy { it.key.length })
             .take(max)
             .map { it.key }
+    }
+
+    const val EXTRA_WEIGHT = 0.75f
+
+    /** lex dagi p bilan boshlanuvchi soʻzlarni (chastotasi * weight) ball bilan scored ga qoʻshadi (eng yuqorisi qoladi). */
+    fun addMatches(scored: MutableMap<String, Float>, p: String, lex: Lexicon?, weight: Float, limit: Int) {
+        val list = lex?.byFirst?.get(p[0]) ?: return
+        var found = 0
+        for (en in list) { // chastota boʻyicha tartiblangan
+            if (en.word.length > p.length && en.word.startsWith(p)) {
+                val s = en.prior * weight
+                if (s > (scored[en.word] ?: 0f)) scored[en.word] = s
+                if (++found >= limit) break
+            }
+        }
     }
 
     /** Surib yozish uchun: oʻrganilgan soʻzlar nusxasi. */

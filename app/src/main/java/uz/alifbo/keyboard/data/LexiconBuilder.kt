@@ -12,14 +12,16 @@ object LexiconBuilder {
         return set
     }
 
-    fun build(lines: List<String>, lang: String, letters: Set<Char>): Lexicon {
-        val modern = 'ş' in letters
+    /** letters == null — aralash tilda tavsiyalar uchun: paket harflari bilan cheklanmaydi, faqat harflardan iborat soʻzlar olinadi. */
+    fun build(lines: List<String>, lang: String, letters: Set<Char>?): Lexicon {
+        val modern = letters != null && 'ş' in letters
         val words = HashMap<String, Float>()
         var maxLog = 1f
         val parsed = ArrayList<Pair<String, Float>>(lines.size)
         for ((i, line) in lines.withIndex()) {
             val p = line.split('\t')
-            var w = p[0].trim().lowercase().replace('\'', 'ʻ')
+            var w = p[0].trim().lowercase()
+            if (lang == "uz") w = w.replace('\'', 'ʻ')
             if (w.isEmpty()) continue
             if (lang == "uz" && modern) {
                 w = w.replace("oʻ", "ö").replace("gʻ", "ğ").replace("sh", "ş").replace("ch", "ç")
@@ -30,7 +32,7 @@ object LexiconBuilder {
             parsed.add(w to lg)
         }
         for ((w, lg) in parsed) {
-            if (w.length < 2 || !w.all { it in letters }) continue
+            if (w.length < 2 || !w.all { if (letters == null) it.isLetter() else it in letters }) continue
             val prior = lg / maxLog
             val old = words[w]
             if (old == null || prior > old) words[w] = prior

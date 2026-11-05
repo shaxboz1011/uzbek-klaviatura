@@ -39,6 +39,8 @@ class KeyboardView(context: Context) : View(context) {
         fun onExitOneHanded()
         /** Surib yozish natijasi: birinchisi — eng yaxshi nomzod. */
         fun onSwipe(words: List<String>)
+        /** Klaviatura ichidagi asbob tugmasi (iOS uslubidagi 😀 va 🎤): StripView asbob raqami. */
+        fun onToolKey(id: Int)
     }
 
     /** Surib yozish uchun oʻrganilgan soʻzlar. */
@@ -115,6 +117,8 @@ class KeyboardView(context: Context) : View(context) {
     private var colPopup = 0
     private var colShadow = 0
     private var balloon = false
+    private var ios = false
+    private var vGapMul = 1f
 
     private var longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
 
@@ -158,7 +162,13 @@ class KeyboardView(context: Context) : View(context) {
         colAccent = Theme.accent(context)
         colPopup = Theme.col(context, R.color.kb_popup)
         colShadow = Theme.col(context, R.color.kb_key_shadow)
-        balloon = Theme.style(context).balloon
+        val st = Theme.style(context)
+        balloon = st.balloon
+        vGapMul = st.vGapMul
+        if (ios != st.ios) {
+            ios = st.ios
+            refreshRows()
+        }
         invalidate()
     }
 
@@ -268,18 +278,39 @@ class KeyboardView(context: Context) : View(context) {
                 }
             }
         }
+        if (ios) rows = iosRows(rows)
         cancelAll()
         requestLayout()
         rebuild()
         invalidate()
     }
 
+    private fun tok(label: String, w: Float) = KeySpec(label, w, emptyList(), null)
+
+    /**
+     * iOS ga oʻxshash pastki qatorlar: [123/ABC | 😀 | boʻsh joy | return] va uning ostida yassi qator [🌐 ... 🎤].
+     * Vergul/nuqta tugmalari iOS dagidek belgilar sahifasida (ikki marta boʻsh joy — nuqta).
+     */
+    private fun iosRows(src: List<List<KeySpec>>): List<List<KeySpec>> {
+        if (src.size < 2) return src
+        val bottom = listOf(
+            tok(if (symbols) "@abc" else "@sym", 1.4f), tok("@emoji", 1.1f), tok("@space", 5f), tok("@enter", 2.2f)
+        )
+        val access = listOf(tok("@lang", 1.2f), tok("@gap", 5f), tok("@voice", 1.2f))
+        return src.dropLast(1) + listOf(bottom, access)
+    }
+
+    private fun isAccessoryRow(r: List<KeySpec>) = r.any { it.label == "@gap" }
+
+    /** Qator balandligi ulushi: iOS ning pastdagi yassi qatori past. */
+    private fun rowUnits(r: List<KeySpec>) = if (isAccessoryRow(r)) 0.72f else 1f
+
     /** Raqamlar qatori yoqiq boʻlsa, harf ustidagi raqam-belgi va uning uzoq bosishi kerak emas. */
     private fun altsOf(s: KeySpec): List<String> =
         if (numberRow && s.hint != null) s.alternates.filter { it != s.hint } else s.alternates
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-        val n = rows.size.coerceAtLeast(4)
+        val n = if (rows.isEmpty()) 4f else maxOf(4f, rows.sumOf { rowUnits(it).toDouble() }.toFloat())
         val h = (n * dp(52f) * heightScale + dp(10f) + dp(extraBottom) + bottomInset).toInt()
         setMeasuredDimension(MeasureSpec.getSize(widthSpec), h)
     }
@@ -301,7 +332,7 @@ class KeyboardView(context: Context) : View(context) {
 
         var maxSum = 0f
         for (r in rows) {
-            if (r.any { it.label == "@space" }) continue
+            if (r.any { it.label == "@space" || it.label == "@gap" }) continue
             val s = sumW(r)
             if (s > maxSum) maxSum = s
         }
@@ -314,24 +345,27 @@ class KeyboardView(context: Context) : View(context) {
             else -> padH
         }
         val unit = availW / maxSum
-        val rowH = (h - padTop - padBottom - bottomInset) / rows.size
+        val totalUnits = rows.sumOf { rowUnits(it).toDouble() }.toFloat()
+        val unitH = (h - padTop - padBottom - bottomInset) / totalUnits
+        var top = padTop
 
         for ((ri, r) in rows.withIndex()) {
+            val rowH = unitH * rowUnits(r)
             val ws = FloatArray(r.size) { r[it].weight }
             var sum = ws.sum()
-            val si = r.indexOfFirst { it.label == "@space" }
+            val si = r.indexOfFirst { it.label == "@space" || it.label == "@gap" }
             if (si >= 0 && sum < maxSum) {
                 ws[si] += maxSum - sum
                 sum = maxSum
             }
             val scale = if (sum > maxSum) maxSum / sum else 1f
             var x = baseX + (availW - sum * scale * unit) / 2f
-            val top = padTop + ri * rowH
             for ((i, k) in r.withIndex()) {
                 val kw = ws[i] * unit * scale
                 keys.add(KeyRect(k, RectF(x, top, x + kw, top + rowH), ri))
                 x += kw
             }
+            top += rowH
         }
     }
 
@@ -350,12 +384,15 @@ class KeyboardView(context: Context) : View(context) {
         c.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paintBg)
 
         val g = dp(gapDp)
+        val gy = g * vGapMul
         val radius = dp(radiusDp)
         for (k in keys) {
             val r = k.rect
-            tmp.set(r.left + g, r.top + g, r.right - g, r.bottom - g)
+            tmp.set(r.left + g, r.top + gy, r.right - g, r.bottom - gy)
             val lbl = k.spec.label
             val isTok = k.spec.isToken
+            // iOS uslubida pastdagi 🌐 va 🎤 — fonsiz, yassi belgilar
+            val flat = ios && (lbl == "@lang" || lbl == "@voice" || lbl == "@gap")
 
             var bg = if (isTok && lbl != "@space") colSpecial else colKey
             var fg = colText
@@ -363,20 +400,30 @@ class KeyboardView(context: Context) : View(context) {
                 bg = colSpecial
             }
             if (lbl == "@shift") {
-                fg = colAccent
-                if (shift != 0) {
-                    bg = colAccent
-                    fg = 0xFFFFFFFF.toInt()
+                if (ios) {
+                    // iOS: yoqilganda oq/och kulrang tugma va qora strelka, oʻchiqda oddiy maxsus tugma
+                    if (shift != 0) {
+                        bg = if (Theme.isDark(context)) 0xFFD3D5D9.toInt() else 0xFFFFFFFF.toInt()
+                        fg = 0xFF000000.toInt()
+                    }
+                } else {
+                    fg = colAccent
+                    if (shift != 0) {
+                        bg = colAccent
+                        fg = 0xFFFFFFFF.toInt()
+                    }
                 }
             }
             if (isKeyPressed(k)) bg = colPressed
-            if (shadowOn && !isKeyPressed(k)) {
-                shadow.set(tmp.left, tmp.top + dp(1.3f), tmp.right, tmp.bottom + dp(1.3f))
-                paintKey.color = colShadow
-                c.drawRoundRect(shadow, radius, radius, paintKey)
+            if (!flat) {
+                if (shadowOn && !isKeyPressed(k)) {
+                    shadow.set(tmp.left, tmp.top + dp(1.3f), tmp.right, tmp.bottom + dp(1.3f))
+                    paintKey.color = colShadow
+                    c.drawRoundRect(shadow, radius, radius, paintKey)
+                }
+                paintKey.color = bg
+                c.drawRoundRect(tmp, radius, radius, paintKey)
             }
-            paintKey.color = bg
-            c.drawRoundRect(tmp, radius, radius, paintKey)
 
             val cx = tmp.centerX()
             val cy = tmp.centerY()
@@ -390,7 +437,9 @@ class KeyboardView(context: Context) : View(context) {
                         c.drawLine(cx - rowH * 0.1f, cy + rowH * 0.3f, cx + rowH * 0.1f, cy + rowH * 0.3f, paintIcon)
                     }
                 }
-                "@del", "@lang" -> drawIcon(c, lbl, cx, cy, rowH * 0.2f, fg, false)
+                "@del", "@lang" -> drawIcon(c, lbl, cx, cy, if (flat) k.rect.height() * 0.27f else rowH * 0.2f, fg, false)
+                "@emoji", "@voice" -> drawIcon(c, lbl, cx, cy, if (flat) k.rect.height() * 0.27f else rowH * 0.2f, fg, false)
+                "@gap" -> {}
                 "@enter" -> {
                     val t = enterLabel
                     if (t == null) {
@@ -404,7 +453,7 @@ class KeyboardView(context: Context) : View(context) {
                 "@sym" -> {
                     paintText.color = fg
                     paintText.textSize = rowH * 0.3f * textScale
-                    drawCentered(c, "!#1", cx, cy, paintText)
+                    drawCentered(c, if (ios) "123" else "!#1", cx, cy, paintText)
                 }
                 "@page" -> {
                     paintText.color = fg
@@ -414,7 +463,7 @@ class KeyboardView(context: Context) : View(context) {
                 "@abc" -> {
                     paintText.color = fg
                     paintText.textSize = rowH * 0.3f * textScale
-                    drawCentered(c, "ABC", cx, cy, paintText)
+                    drawCentered(c, if (ios) "ABC" else "ABC", cx, cy, paintText)
                 }
                 "@space" -> {
                     paintText.color = colText
@@ -472,8 +521,8 @@ class KeyboardView(context: Context) : View(context) {
                 if (p.alts != null || p.swipe || k.spec.isToken || k.row == 0) continue
                 val t = if (shift != 0 && !symbols) k.spec.label.uppercase(caseLocale) else k.spec.label
                 val r = k.rect
-                val bw = if (balloon) maxOf(r.width() * 1.5f, dp(54f)) else maxOf(r.width(), dp(48f))
-                val bh = if (balloon) r.height() * 1.25f else r.height() * 1.1f
+                val bw = if (balloon) maxOf(r.width() * 1.6f, dp(56f)) else maxOf(r.width(), dp(48f))
+                val bh = if (balloon) r.height() * 1.3f else r.height() * 1.1f
                 val left = (r.centerX() - bw / 2f).coerceIn(0f, width - bw)
                 val top = r.top - bh - (if (balloon) dp(8f) else dp(2f))
                 tmp.set(left, top, left + bw, top + bh)
@@ -481,6 +530,11 @@ class KeyboardView(context: Context) : View(context) {
                 if (balloon) {
                     // Tomchi: pufak + tugmaga ulovchi boʻyin
                     val br = maxOf(radius * 1.6f, dp(10f))
+                    // yengil soya
+                    paintKey.color = colShadow and 0x00FFFFFF or 0x55000000
+                    shadow.set(tmp.left, tmp.top + dp(2f), tmp.right, tmp.bottom + dp(2f))
+                    c.drawRoundRect(shadow, br, br, paintKey)
+                    paintKey.color = colPopup
                     c.drawRoundRect(tmp, br, br, paintKey)
                     path.reset()
                     val nl = (left + bw / 2f - r.width() / 2f).coerceAtLeast(left + br)
@@ -495,8 +549,8 @@ class KeyboardView(context: Context) : View(context) {
                     c.drawRoundRect(tmp, radius, radius, paintKey)
                 }
                 paintText.color = colText
-                paintText.textSize = bh * 0.5f
-                drawCentered(c, t, tmp.centerX(), tmp.centerY(), paintText)
+                paintText.textSize = bh * (if (balloon) 0.56f else 0.5f)
+                drawCentered(c, t, tmp.centerX(), if (balloon) tmp.centerY() - bh * 0.06f else tmp.centerY(), paintText)
             }
         }
 
@@ -524,7 +578,7 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private fun spaceLabel(): String = pack?.name ?: ""
+    private fun spaceLabel(): String = pack?.short?.takeIf { it.isNotEmpty() } ?: pack?.name ?: ""
 
     /** Matn tugmaga sigʻmasa — avval kichraytiradi, keyin qisqa nomga oʻtadi, oxirida "…" bilan kesadi. */
     private fun fitText(t: String, maxW: Float, rowH: Float): String {
@@ -589,6 +643,27 @@ class KeyboardView(context: Context) : View(context) {
                 c.drawCircle(cx, cy, s, paintIcon)
                 c.drawOval(cx - s * 0.45f, cy - s, cx + s * 0.45f, cy + s, paintIcon)
                 c.drawLine(cx - s, cy, cx + s, cy, paintIcon)
+                if (ios) {
+                    c.drawLine(cx - s * 0.85f, cy - s * 0.5f, cx + s * 0.85f, cy - s * 0.5f, paintIcon)
+                    c.drawLine(cx - s * 0.85f, cy + s * 0.5f, cx + s * 0.85f, cy + s * 0.5f, paintIcon)
+                }
+            }
+            "@emoji" -> {
+                c.drawCircle(cx, cy, s, paintIcon)
+                paintIcon.style = Paint.Style.FILL
+                c.drawCircle(cx - s * 0.36f, cy - s * 0.25f, s * 0.11f, paintIcon)
+                c.drawCircle(cx + s * 0.36f, cy - s * 0.25f, s * 0.11f, paintIcon)
+                paintIcon.style = Paint.Style.STROKE
+                tmp.set(cx - s * 0.58f, cy - s * 0.4f, cx + s * 0.58f, cy + s * 0.62f)
+                c.drawArc(tmp, 20f, 140f, false, paintIcon)
+            }
+            "@voice" -> {
+                tmp.set(cx - s * 0.36f, cy - s, cx + s * 0.36f, cy + s * 0.25f)
+                c.drawRoundRect(tmp, s * 0.36f, s * 0.36f, paintIcon)
+                tmp.set(cx - s * 0.72f, cy - s * 0.5f, cx + s * 0.72f, cy + s * 0.62f)
+                c.drawArc(tmp, 0f, 180f, false, paintIcon)
+                c.drawLine(cx, cy + s * 0.62f, cx, cy + s, paintIcon)
+                c.drawLine(cx - s * 0.35f, cy + s, cx + s * 0.35f, cy + s, paintIcon)
             }
         }
     }
@@ -918,6 +993,9 @@ class KeyboardView(context: Context) : View(context) {
                 refreshRows()
             }
             "@lang" -> listener?.onLangNext()
+            "@emoji" -> listener?.onToolKey(StripView.EMOJI)
+            "@voice" -> listener?.onToolKey(StripView.VOICE)
+            "@gap" -> {}
             "@space" -> commit(" ")
             "@enter" -> {
                 if (shift == 1) {

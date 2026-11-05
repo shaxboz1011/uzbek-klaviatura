@@ -9,4 +9,5 @@
     <color name="kb_accent">#1A5FE0</color>
     <color name="kb_popup">#FFFFFF</color>
     <color name="kb_key_shadow">#BEC4CE</color>
+    <color name="kb_chip">#D8DCE3</color>
 </resources>
