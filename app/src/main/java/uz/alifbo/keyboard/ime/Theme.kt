@@ -5,14 +5,73 @@ import android.content.res.Configuration
 import uz.alifbo.keyboard.R
 import uz.alifbo.keyboard.data.Prefs
 
-/** Klaviatura mavzusi: och/toʻq/tizim va urgʻu rangi. */
+/** Klaviatura mavzusi: och/toʻq/tizim, urgʻu rangi va tayyor uslublar (Samsung / iOS / Redmi ga oʻxshash). */
 object Theme {
-    /** Urgʻu ranglari (ARGB). 0 — standart (kb_accent). */
+    /** Urgʻu ranglari (ARGB). 0 — standart (uslubning yoki kb_accent). */
     val ACCENTS = intArrayOf(0, 0xFF1E9E5A.toInt(), 0xFF7B4DD6.toInt(), 0xFFE8710A.toInt(), 0xFFD6336C.toInt(), 0xFF0E8A8A.toInt())
 
+    /**
+     * Tayyor uslub: tugma shakli + ranglar. Ranglar tartibi: fon, tugma, maxsus tugma, bosilgan, matn, hint, popup, soya.
+     * Uslub 0 (Samsung) ranglarni res/values dan oladi (light/dark null).
+     */
+    class Style(
+        val id: Int,
+        val name: String,
+        val radius: Int,
+        val gap: Int,
+        val textScale: Int,
+        val shadow: Boolean,
+        /** Tugma bosilganda yuqorida "tomchi" (tugmaga ulangan) koʻrinadi. */
+        val balloon: Boolean,
+        val accent: Int,
+        val light: IntArray?,
+        val dark: IntArray?
+    )
+
+    val STYLES: List<Style> = listOf(
+        Style(0, "Samsung", 9, 3, 100, true, false, 0, null, null),
+        // Yumaloq, yirik harfli, tugma ostida soya va tomchi popup (iOS ga oʻxshash; ikonka va shriftlar nusxalanmaydi)
+        Style(
+            1, "Yumaloq (iOS ga oʻxshash)", 6, 5, 108, true, true, 0xFF0A84FF.toInt(),
+            intArrayOf(0xFFD2D5DB.toInt(), 0xFFFFFFFF.toInt(), 0xFFABB1BC.toInt(), 0xFFB9BEC7.toInt(), 0xFF000000.toInt(), 0xFF6B6F76.toInt(), 0xFFFFFFFF.toInt(), 0xFF898A8D.toInt()),
+            intArrayOf(0xFF1E1E20.toInt(), 0xFF5B5B5F.toInt(), 0xFF3D3D41.toInt(), 0xFF7A7A7E.toInt(), 0xFFFFFFFF.toInt(), 0xFFA0A0A5.toInt(), 0xFF6A6A6E.toInt(), 0xFF0A0A0B.toInt())
+        ),
+        // Keng oraliq, yumshoq burchak, soyasiz, toʻq sariq urgʻu (Redmi/MIUI ga oʻxshash)
+        Style(
+            2, "Yumshoq (Redmi ga oʻxshash)", 14, 5, 100, false, false, 0xFFFF6900.toInt(),
+            intArrayOf(0xFFEEF0F4.toInt(), 0xFFFFFFFF.toInt(), 0xFFDDE1E8.toInt(), 0xFFCBD1DB.toInt(), 0xFF202124.toInt(), 0xFF7A7F87.toInt(), 0xFFFFFFFF.toInt(), 0x00000000),
+            intArrayOf(0xFF17181A.toInt(), 0xFF2C2E31.toInt(), 0xFF232528.toInt(), 0xFF3A3D41.toInt(), 0xFFF1F3F4.toInt(), 0xFF8A8F96.toInt(), 0xFF3A3D41.toInt(), 0x00000000)
+        )
+    )
+
+    fun style(ctx: Context): Style = STYLES.getOrNull(Prefs(ctx).stylePreset) ?: STYLES[0]
+
+    private fun isNight(ctx: Context) =
+        (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+    /** kb_* rang resursi: Samsung uslubida res/values dan, boshqa uslublarda uslub palitrasidan. */
+    fun col(ctx: Context, res: Int): Int {
+        val st = style(ctx)
+        val pal = (if (isNight(ctx)) st.dark else st.light) ?: return ctx.getColor(res)
+        val i = when (res) {
+            R.color.kb_bg -> 0
+            R.color.kb_key -> 1
+            R.color.kb_key_special -> 2
+            R.color.kb_key_pressed -> 3
+            R.color.kb_text -> 4
+            R.color.kb_hint -> 5
+            R.color.kb_popup -> 6
+            R.color.kb_key_shadow -> 7
+            else -> return ctx.getColor(res)
+        }
+        return pal[i]
+    }
+
     fun accent(ctx: Context): Int {
-        val a = Prefs(ctx).accent
-        return if (a != 0) a else ctx.getColor(R.color.kb_accent)
+        val p = Prefs(ctx)
+        if (p.accent != 0) return p.accent
+        val st = style(ctx)
+        return if (st.accent != 0) st.accent else ctx.getColor(R.color.kb_accent)
     }
 
     /** mode: 0 - tizim, 1 - och, 2 - toʻq. Resurslar (values / values-night) shu rejimga qarab tanlanadi. */

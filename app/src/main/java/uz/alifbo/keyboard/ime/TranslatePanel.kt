@@ -55,7 +55,7 @@ class TranslatePanel(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(context.getColor(R.color.kb_bg))
+        setBackgroundColor(Theme.col(context, R.color.kb_bg))
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -81,7 +81,7 @@ class TranslatePanel(context: Context) : LinearLayout(context) {
             textSize = 14f
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
-            setTextColor(context.getColor(R.color.kb_hint))
+            setTextColor(Theme.col(context, R.color.kb_hint))
             setPadding(dp(12), dp(8), dp(12), dp(8))
             background = card()
         }
@@ -90,7 +90,7 @@ class TranslatePanel(context: Context) : LinearLayout(context) {
         val body = android.widget.FrameLayout(context)
         resultView.apply {
             textSize = 17f
-            setTextColor(context.getColor(R.color.kb_text))
+            setTextColor(Theme.col(context, R.color.kb_text))
             setPadding(dp(12), dp(8), dp(12), dp(8))
         }
         val sv = ScrollView(context).apply {
@@ -109,7 +109,7 @@ class TranslatePanel(context: Context) : LinearLayout(context) {
                     "Parol, email va havola maydonlarida ishlamaydi."
                 textSize = 13f
                 gravity = Gravity.CENTER
-                setTextColor(context.getColor(R.color.kb_text))
+                setTextColor(Theme.col(context, R.color.kb_text))
             })
             addView(pill("Roziman", true) {
                 prefs.translateConsent = true
@@ -137,7 +137,7 @@ class TranslatePanel(context: Context) : LinearLayout(context) {
     // ---------------------------------------------------------------- koʻrinish yordamchilari
 
     private fun card() = GradientDrawable().apply {
-        setColor(context.getColor(R.color.kb_key))
+        setColor(Theme.col(context, R.color.kb_key))
         cornerRadius = dp(10).toFloat()
     }
 
@@ -161,18 +161,18 @@ class TranslatePanel(context: Context) : LinearLayout(context) {
         text = t
         textSize = 14f
         gravity = Gravity.CENTER
-        setTextColor(if (primary) 0xFFFFFFFF.toInt() else context.getColor(R.color.kb_text))
+        setTextColor(if (primary) 0xFFFFFFFF.toInt() else Theme.col(context, R.color.kb_text))
         background = GradientDrawable().apply {
-            setColor(if (primary) accent() else context.getColor(R.color.kb_key_special))
+            setColor(if (primary) accent() else Theme.col(context, R.color.kb_key_special))
             cornerRadius = dp(20).toFloat()
         }
         setOnClickListener { onClick() }
     }
 
     private fun paintChip(c: TextView, on: Boolean) {
-        c.setTextColor(if (on) 0xFFFFFFFF.toInt() else context.getColor(R.color.kb_text))
+        c.setTextColor(if (on) 0xFFFFFFFF.toInt() else Theme.col(context, R.color.kb_text))
         c.background = GradientDrawable().apply {
-            setColor(if (on) accent() else context.getColor(R.color.kb_key_special))
+            setColor(if (on) accent() else Theme.col(context, R.color.kb_key_special))
             cornerRadius = dp(16).toFloat()
         }
     }

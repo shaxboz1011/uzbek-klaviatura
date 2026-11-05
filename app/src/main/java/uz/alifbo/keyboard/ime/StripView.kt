@@ -66,10 +66,10 @@ class StripView(context: Context) : View(context) {
     }
 
     fun reloadColors() {
-        colBg = context.getColor(R.color.kb_bg)
-        colText = context.getColor(R.color.kb_text)
-        colHint = context.getColor(R.color.kb_hint)
-        colPressed = context.getColor(R.color.kb_key_pressed)
+        colBg = Theme.col(context, R.color.kb_bg)
+        colText = Theme.col(context, R.color.kb_text)
+        colHint = Theme.col(context, R.color.kb_hint)
+        colPressed = Theme.col(context, R.color.kb_key_pressed)
         colAccent = Theme.accent(context)
         invalidate()
     }

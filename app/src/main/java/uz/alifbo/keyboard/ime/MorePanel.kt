@@ -42,7 +42,7 @@ class MorePanel(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(context.getColor(R.color.kb_bg))
+        setBackgroundColor(Theme.col(context, R.color.kb_bg))
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -58,7 +58,7 @@ class MorePanel(context: Context) : LinearLayout(context) {
         header.addView(TextView(context).apply {
             text = "Asboblar"
             textSize = 13f
-            setTextColor(context.getColor(R.color.kb_hint))
+            setTextColor(Theme.col(context, R.color.kb_hint))
         }, LayoutParams(0, dp(40), 1f))
         addView(header, LayoutParams(MATCH_PARENT, dp(40)))
 
@@ -104,7 +104,7 @@ class MorePanel(context: Context) : LinearLayout(context) {
         v.gravity = Gravity.CENTER
         v.setPadding(dp(2), dp(4), dp(2), dp(4))
         v.background = GradientDrawable().apply {
-            setColor(context.getColor(R.color.kb_key))
+            setColor(Theme.col(context, R.color.kb_key))
             cornerRadius = dp(12).toFloat()
         }
         v.addView(TextView(context).apply {
@@ -117,7 +117,7 @@ class MorePanel(context: Context) : LinearLayout(context) {
             textSize = 11f
             gravity = Gravity.CENTER
             maxLines = 2
-            setTextColor(context.getColor(R.color.kb_text))
+            setTextColor(Theme.col(context, R.color.kb_text))
         }, LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
         v.setOnClickListener { listener?.onMore(t.id) }
         return v

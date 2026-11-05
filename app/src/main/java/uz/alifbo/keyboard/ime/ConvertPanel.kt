@@ -31,7 +31,7 @@ class ConvertPanel(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(context.getColor(R.color.kb_bg))
+        setBackgroundColor(Theme.col(context, R.color.kb_bg))
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -47,7 +47,7 @@ class ConvertPanel(context: Context) : LinearLayout(context) {
         header.addView(TextView(context).apply {
             text = "Alifbo oʻgiruvchi — belgilangan matn (yoki maydondagi hammasi)"
             textSize = 12f
-            setTextColor(context.getColor(R.color.kb_hint))
+            setTextColor(Theme.col(context, R.color.kb_hint))
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
         }, LayoutParams(0, dp(40), 1f))
@@ -57,7 +57,7 @@ class ConvertPanel(context: Context) : LinearLayout(context) {
             textSize = 14f
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
-            setTextColor(context.getColor(R.color.kb_hint))
+            setTextColor(Theme.col(context, R.color.kb_hint))
             setPadding(dp(12), dp(8), dp(12), dp(8))
             background = card()
         }
@@ -71,14 +71,14 @@ class ConvertPanel(context: Context) : LinearLayout(context) {
 
         after.apply {
             textSize = 12f
-            setTextColor(context.getColor(R.color.kb_hint))
+            setTextColor(Theme.col(context, R.color.kb_hint))
             setPadding(dp(12), dp(2), dp(12), dp(2))
         }
         addView(after, LayoutParams(MATCH_PARENT, WRAP_CONTENT))
     }
 
     private fun card() = GradientDrawable().apply {
-        setColor(context.getColor(R.color.kb_key))
+        setColor(Theme.col(context, R.color.kb_key))
         cornerRadius = dp(10).toFloat()
     }
 

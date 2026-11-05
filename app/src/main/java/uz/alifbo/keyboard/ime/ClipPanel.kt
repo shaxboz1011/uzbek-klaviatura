@@ -30,7 +30,7 @@ class ClipPanel(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(context.getColor(R.color.kb_bg))
+        setBackgroundColor(Theme.col(context, R.color.kb_bg))
 
         val header = LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -40,7 +40,7 @@ class ClipPanel(context: Context) : LinearLayout(context) {
         header.addView(TextView(context).apply {
             text = "Bufer  ·  bosing — qoʻyish, uzoq bosing — qadash"
             textSize = 12f
-            setTextColor(context.getColor(R.color.kb_hint))
+            setTextColor(Theme.col(context, R.color.kb_hint))
             gravity = Gravity.CENTER_VERTICAL
         }, LayoutParams(0, dp(44), 1f))
         header.addView(btn("Tozalash") { listener?.onClearClips() }, LayoutParams(WRAP_CONTENT, dp(44)))
@@ -71,7 +71,7 @@ class ClipPanel(context: Context) : LinearLayout(context) {
                         "(Sozlamalar → Umumiy boshqaruv → Klaviatura roʻyxati)."
                 }
                 textSize = 14f
-                setTextColor(context.getColor(R.color.kb_hint))
+                setTextColor(Theme.col(context, R.color.kb_hint))
                 setPadding(dp(16), dp(24), dp(16), dp(16))
             })
             return
@@ -82,10 +82,10 @@ class ClipPanel(context: Context) : LinearLayout(context) {
                 textSize = 15f
                 maxLines = 3
                 ellipsize = TextUtils.TruncateAt.END
-                setTextColor(context.getColor(R.color.kb_text))
+                setTextColor(Theme.col(context, R.color.kb_text))
                 setPadding(dp(12), dp(10), dp(12), dp(10))
                 background = GradientDrawable().apply {
-                    setColor(context.getColor(R.color.kb_key))
+                    setColor(Theme.col(context, R.color.kb_key))
                     cornerRadius = dp(10).toFloat()
                 }
                 setOnClickListener { listener?.onPaste(item.text) }
