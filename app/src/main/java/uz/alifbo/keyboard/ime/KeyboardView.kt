@@ -578,7 +578,7 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private fun spaceLabel(): String = (if (ios) pack?.short ?: pack?.name else pack?.name) ?: ""
+    private fun spaceLabel(): String = pack?.short?.takeIf { it.isNotEmpty() } ?: pack?.name ?: ""
 
     /** Matn tugmaga sigʻmasa — avval kichraytiradi, keyin qisqa nomga oʻtadi, oxirida "…" bilan kesadi. */
     private fun fitText(t: String, maxW: Float, rowH: Float): String {

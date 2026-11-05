@@ -186,7 +186,7 @@ class StripView(context: Context) : View(context) {
         }
 
         // Samsung kabi: har bir asbob doira ichida
-        val r = minOf(cw / 2f - 3 * density, height * 0.4f)
+        val r = minOf(cw / 2f - 7 * density, height * 0.36f)
         for (i in 0 until n) {
             val cx = i * cw + cw / 2f
             paint.style = Paint.Style.FILL
@@ -299,8 +299,8 @@ class StripView(context: Context) : View(context) {
             }
             EDIT -> {
                 // toʻrt tomonga strelkalar (kursor boshqaruvi)
-                val a = s * 0.95f
-                val t = s * 0.45f
+                val a = s * 1.05f
+                val t = s * 0.32f
                 c.drawLine(cx - a, cy, cx - a + t, cy - t, paint)
                 c.drawLine(cx - a, cy, cx - a + t, cy + t, paint)
                 c.drawLine(cx + a, cy, cx + a - t, cy - t, paint)

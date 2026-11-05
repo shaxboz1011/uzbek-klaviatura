@@ -65,7 +65,7 @@ class EditPanel(context: Context) : LinearLayout(context) {
         // Oʻng: amallar
         val actions = LinearLayout(context).apply { orientation = VERTICAL }
         actions.addView(row(
-            tile("Hammasi") { listener?.onEditAction(SELECT_ALL) },
+            tile("Hamma") { listener?.onEditAction(SELECT_ALL) },
             tile("Kesish") { listener?.onEditAction(CUT) },
             tile("Nusxa") { listener?.onEditAction(COPY) },
             tile("Qoʻyish") { listener?.onEditAction(PASTE) }
@@ -78,7 +78,7 @@ class EditPanel(context: Context) : LinearLayout(context) {
         ), rowLp())
         actions.addView(row(
             tile("Bekor") { listener?.onEditAction(UNDO) },
-            tile("Qaytarish") { listener?.onEditAction(REDO) },
+            tile("Qaytar") { listener?.onEditAction(REDO) },
             tile("⌫") { key(KeyEvent.KEYCODE_DEL) },
             spacer()
         ), rowLp())
@@ -106,7 +106,7 @@ class EditPanel(context: Context) : LinearLayout(context) {
         cornerRadius = dp(10).toFloat()
     }
 
-    private fun tile(t: String, onClick: () -> Unit) = label(t, Theme.col(context, R.color.kb_text), 13f).apply {
+    private fun tile(t: String, onClick: () -> Unit) = label(t, Theme.col(context, R.color.kb_text), 12f).apply {
         background = box(Theme.col(context, R.color.kb_key))
         setOnClickListener { onClick() }
         layoutParams = LayoutParams(0, MATCH_PARENT, 1f).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) }
