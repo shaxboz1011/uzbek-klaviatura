@@ -57,6 +57,8 @@ class KeyboardShotsTest {
             render("$n-light", i, 1)
             render("$n-dark", i, 2)
             render("$n-dark-suggest", i, 2) { it.strip.setSuggestions(listOf("salom", "salomat", "salomatlik")) }
+            render("$n-dark-edit", i, 2) { it.edit.reset(); it.showPanel(KeyboardRoot.EDIT) }
+            render("$n-light-symbols", i, 1) { it.keyboard.setSymbols(true) }
             render("$n-light-chips", i, 1) {
                 it.strip.setChips(listOf(StripView.Chip("Assalomu alaykum, qalaysiz?"), StripView.Chip("Skrinshot", null)))
             }

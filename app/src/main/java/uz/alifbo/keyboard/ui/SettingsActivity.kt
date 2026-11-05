@@ -218,7 +218,7 @@ class SettingsActivity : Activity() {
 
         // ---- Asboblar qatori ----
         root.addView(section("Asboblar qatori"))
-        val toolNames = listOf("Emoji", "Tarjima", "Bufer", "Ovozli kiritish", "Sozlamalar", null, "Skaner (kameradan matn)")
+        val toolNames = listOf("Emoji", "Tarjima", "Bufer", "Ovozli kiritish", "Sozlamalar", null, "Skaner (kameradan matn)", "Matn tahrirlash (kursor, belgilash, nusxa)")
         for ((i, n) in toolNames.withIndex()) {
             if (n == null) continue
             switchRow(root, n, ((prefs.toolsMask shr i) and 1) == 1) { on ->

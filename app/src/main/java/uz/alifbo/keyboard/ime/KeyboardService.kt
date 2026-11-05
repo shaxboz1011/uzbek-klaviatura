@@ -32,7 +32,7 @@ import uz.alifbo.keyboard.ui.VoiceBridge
 
 class KeyboardService : InputMethodService(),
     KeyboardView.Listener, StripView.Listener, EmojiPanel.Listener, ClipPanel.Listener,
-    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener {
+    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener, EditPanel.Listener {
 
     private var root: KeyboardRoot? = null
     private lateinit var prefs: Prefs
@@ -65,6 +65,7 @@ class KeyboardService : InputMethodService(),
         if (prefs.mixedLang) (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.let { LexiconStore.loadExtrasAsync(this, it) {} }
         r.reloadColors()
         r.strip.setToolsMask(prefs.toolsMask)
+        r.strip.setBadges(StripView.NEW_MASK and prefs.seenTools.inv())
         val v = r.keyboard
         v.applyPrefs(prefs.haptic, prefs.heightPercent, prefs.keyPreview, prefs.sound)
         v.setSoundVolume(prefs.soundVolume)
@@ -147,6 +148,7 @@ class KeyboardService : InputMethodService(),
         r.keyboard.listener = this
         r.keyboard.learnedWords = { if (learnOn) Predictor.snapshot(this) else emptyMap() }
         r.strip.listener = this
+        r.edit.listener = this
         r.emoji.listener = this
         r.clip.listener = this
         r.more.listener = this
@@ -378,6 +380,30 @@ class KeyboardService : InputMethodService(),
 
     override fun onToolKey(id: Int) = onTool(id)
 
+    // ---------------------------------------------------------------- matn tahrirlash paneli
+
+    override fun onEditKey(keyCode: Int, ctrl: Boolean, shift: Boolean) {
+        val ic = currentInputConnection ?: return
+        var meta = 0
+        if (ctrl) meta = meta or KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        if (shift) meta = meta or KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+        val t = android.os.SystemClock.uptimeMillis()
+        ic.sendKeyEvent(KeyEvent(t, t, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+        ic.sendKeyEvent(KeyEvent(t, t, KeyEvent.ACTION_UP, keyCode, 0, meta))
+    }
+
+    override fun onEditAction(id: Int) {
+        val ic = currentInputConnection ?: return
+        when (id) {
+            EditPanel.SELECT_ALL -> ic.performContextMenuAction(android.R.id.selectAll)
+            EditPanel.CUT -> ic.performContextMenuAction(android.R.id.cut)
+            EditPanel.COPY -> ic.performContextMenuAction(android.R.id.copy)
+            EditPanel.PASTE -> ic.performContextMenuAction(android.R.id.paste)
+            EditPanel.UNDO -> onEditKey(KeyEvent.KEYCODE_Z, true, false)
+            EditPanel.REDO -> onEditKey(KeyEvent.KEYCODE_Z, true, true)
+        }
+    }
+
     override fun onChip(index: Int) {
         val a = chipActions.getOrNull(index) ?: return
         dismissedClip = chipClipText ?: dismissedClip
@@ -455,6 +481,11 @@ class KeyboardService : InputMethodService(),
 
     override fun onTool(id: Int) {
         val r = root ?: return
+        // "Yangi" nuqtasi ochilgach yoʻqoladi
+        if (StripView.NEW_MASK and (1 shl id) != 0 && prefs.seenTools and (1 shl id) == 0) {
+            prefs.seenTools = prefs.seenTools or (1 shl id)
+            r.strip.setBadges(StripView.NEW_MASK and prefs.seenTools.inv())
+        }
         when (id) {
             StripView.EMOJI -> {
                 r.emoji.show(prefs.emojiRecents)
@@ -468,6 +499,10 @@ class KeyboardService : InputMethodService(),
                 val access = captureClip(false)
                 r.clip.show(ClipStore.list(this), access)
                 r.showPanel(KeyboardRoot.CLIP)
+            }
+            StripView.EDIT -> {
+                r.edit.reset()
+                r.showPanel(KeyboardRoot.EDIT)
             }
             StripView.VOICE -> startVoice()
             StripView.SCAN -> startActivity(

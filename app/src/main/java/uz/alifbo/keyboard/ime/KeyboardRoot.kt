@@ -17,6 +17,7 @@ class KeyboardRoot(context: Context) : LinearLayout(context) {
         const val MORE = 3
         const val TRANSLATE = 4
         const val CONVERT = 5
+        const val EDIT = 6
     }
 
     val strip = StripView(context)
@@ -26,6 +27,7 @@ class KeyboardRoot(context: Context) : LinearLayout(context) {
     val more = MorePanel(context)
     val translate = TranslatePanel(context)
     val convert = ConvertPanel(context)
+    val edit = EditPanel(context)
     private val body = FrameLayout(context)
 
     init {
@@ -39,11 +41,13 @@ class KeyboardRoot(context: Context) : LinearLayout(context) {
         body.addView(more, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         body.addView(translate, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         body.addView(convert, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        body.addView(edit, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         emoji.visibility = View.GONE
         clip.visibility = View.GONE
         more.visibility = View.GONE
         translate.visibility = View.GONE
         convert.visibility = View.GONE
+        edit.visibility = View.GONE
     }
 
     fun showPanel(which: Int) {
@@ -53,6 +57,7 @@ class KeyboardRoot(context: Context) : LinearLayout(context) {
         more.visibility = if (which == MORE) View.VISIBLE else View.GONE
         translate.visibility = if (which == TRANSLATE) View.VISIBLE else View.GONE
         convert.visibility = if (which == CONVERT) View.VISIBLE else View.GONE
+        edit.visibility = if (which == EDIT) View.VISIBLE else View.GONE
     }
 
     fun reloadColors() {

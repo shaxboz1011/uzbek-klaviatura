@@ -23,7 +23,7 @@ class StyleTest {
     @Test
     fun firstStyleKeepsTheOriginalLook() {
         val s = Theme.STYLES[0]
-        assertEquals(9, s.radius)
+        assertEquals(10, s.radius)
         assertEquals(3, s.gap)
         assertEquals(100, s.textScale)
         assertTrue(s.light == null)

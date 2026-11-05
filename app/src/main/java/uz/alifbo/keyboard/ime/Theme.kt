@@ -33,7 +33,7 @@ object Theme {
     )
 
     val STYLES: List<Style> = listOf(
-        Style(0, "Samsung", 9, 3, 100, true, false, 0, 100, 1f, false, null, null),
+        Style(0, "Samsung", 10, 3, 100, true, false, 0, 92, 1.7f, false, null, null),
         // Yumaloq, yirik harfli, tugma ostida soya va tomchi popup (iOS ga oʻxshash; ikonka va shriftlar nusxalanmaydi)
         Style(
             1, "Yumaloq (iOS ga oʻxshash)", 5, 3, 112, true, true, 0xFF0A84FF.toInt(), 108, 2f, true,
@@ -42,7 +42,7 @@ object Theme {
         ),
         // Keng oraliq, yumshoq burchak, soyasiz, toʻq sariq urgʻu (Redmi/MIUI ga oʻxshash)
         Style(
-            2, "Yumshoq (Redmi ga oʻxshash)", 14, 5, 100, false, false, 0xFFFF6900.toInt(), 100, 1f, false,
+            2, "Yumshoq (Redmi ga oʻxshash)", 8, 4, 100, false, false, 0xFFFF6900.toInt(), 100, 1f, false,
             intArrayOf(0xFFEEF0F4.toInt(), 0xFFFFFFFF.toInt(), 0xFFDDE1E8.toInt(), 0xFFCBD1DB.toInt(), 0xFF202124.toInt(), 0xFF7A7F87.toInt(), 0xFFFFFFFF.toInt(), 0x00000000),
             intArrayOf(0xFF17181A.toInt(), 0xFF2C2E31.toInt(), 0xFF232528.toInt(), 0xFF3A3D41.toInt(), 0xFFF1F3F4.toInt(), 0xFF8A8F96.toInt(), 0xFF3A3D41.toInt(), 0x00000000)
         )
@@ -62,7 +62,7 @@ object Theme {
         val i = when (res) {
             R.color.kb_bg -> 0
             R.color.kb_key -> 1
-            R.color.kb_key_special -> 2
+            R.color.kb_key_special, R.color.kb_chip -> 2
             R.color.kb_key_pressed -> 3
             R.color.kb_text -> 4
             R.color.kb_hint -> 5

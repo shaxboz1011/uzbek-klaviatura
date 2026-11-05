@@ -144,7 +144,7 @@ class Prefs(context: Context) {
 
     /** Klaviatura balandligi, foizda (80..130). */
     var heightPercent: Int
-        get() = sp.getInt("height", 100).coerceIn(80, 130)
+        get() = sp.getInt("height", 92).coerceIn(80, 130)
         set(v) {
             sp.edit().putInt("height", v).apply()
         }
@@ -219,7 +219,7 @@ class Prefs(context: Context) {
 
     /** Tugma burchaklari radiusi, dp (0..18). */
     var keyRadius: Int
-        get() = sp.getInt("keyRadius", 9).coerceIn(0, 18)
+        get() = sp.getInt("keyRadius", 10).coerceIn(0, 18)
         set(v) { sp.edit().putInt("keyRadius", v).apply() }
 
     /** Tugmalar orasidagi masofa (har tomondan), dp x2 (1..6). */
@@ -264,17 +264,24 @@ class Prefs(context: Context) {
 
     /** Asboblar qatorida koʻrinadigan tugmalar (bit: 0 emoji, 1 tarjima, 2 bufer, 3 ovoz, 4 sozlamalar, 5 «…», 6 skaner). */
     var toolsMask: Int
-        get() = (sp.getInt("toolsMask", 63) and 63) or (if (sp.getBoolean("scanTool", true)) 64 else 0)
+        get() = (sp.getInt("toolsMask", 63) and 63) or (if (sp.getBoolean("scanTool", true)) 64 else 0) or
+            (if (sp.getBoolean("editTool", true)) 128 else 0)
         set(v) {
-            // 6-bit (skaner) alohida saqlanadi: eski saqlangan qiymatlar skanerni yashirib qoʻymasligi uchun.
-            sp.edit().putInt("toolsMask", (v and 63) or 32).putBoolean("scanTool", (v and 64) != 0).apply()
+            // 6-bit (skaner) va 7-bit (matn tahrirlash) alohida saqlanadi: eski saqlangan qiymatlar ularni yashirib qoʻymasligi uchun.
+            sp.edit().putInt("toolsMask", (v and 63) or 32).putBoolean("scanTool", (v and 64) != 0)
+                .putBoolean("editTool", (v and 128) != 0).apply()
         }
+
+    /** Foydalanuvchi allaqachon ochgan "yangi" asboblar (bit niqobi); qolganlarida toʻq sariq nuqta koʻrinadi. */
+    var seenTools: Int
+        get() = sp.getInt("seenTools", 0)
+        set(v) { sp.edit().putInt("seenTools", v).apply() }
 
     /** Barcha koʻrinish/xatti-harakat sozlamalarini standartga qaytaradi (tillar va oʻrganilgan soʻzlarga tegmaydi). */
     fun resetStyle() {
         sp.edit()
             .remove("stylePreset").remove("keyRadius").remove("keyGap").remove("textScale").remove("keyShadow").remove("bottomPad")
-            .remove("scanTool").remove("hapticMs").remove("longPressMs").remove("cursorStep").remove("autoCap").remove("toolsMask")
+            .remove("scanTool").remove("editTool").remove("hapticMs").remove("longPressMs").remove("cursorStep").remove("autoCap").remove("toolsMask")
             .remove("theme").remove("accent").remove("height").remove("soundVol")
             .apply()
     }

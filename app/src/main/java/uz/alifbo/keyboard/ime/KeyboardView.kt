@@ -437,8 +437,8 @@ class KeyboardView(context: Context) : View(context) {
                         c.drawLine(cx - rowH * 0.1f, cy + rowH * 0.3f, cx + rowH * 0.1f, cy + rowH * 0.3f, paintIcon)
                     }
                 }
-                "@del", "@lang" -> drawIcon(c, lbl, cx, cy, if (flat) rowH * 0.17f else rowH * 0.2f, fg, false)
-                "@emoji", "@voice" -> drawIcon(c, lbl, cx, cy, if (flat) rowH * 0.17f else rowH * 0.2f, fg, false)
+                "@del", "@lang" -> drawIcon(c, lbl, cx, cy, if (flat) k.rect.height() * 0.27f else rowH * 0.2f, fg, false)
+                "@emoji", "@voice" -> drawIcon(c, lbl, cx, cy, if (flat) k.rect.height() * 0.27f else rowH * 0.2f, fg, false)
                 "@gap" -> {}
                 "@enter" -> {
                     val t = enterLabel
@@ -578,7 +578,7 @@ class KeyboardView(context: Context) : View(context) {
         }
     }
 
-    private fun spaceLabel(): String = pack?.name ?: ""
+    private fun spaceLabel(): String = (if (ios) pack?.short ?: pack?.name else pack?.name) ?: ""
 
     /** Matn tugmaga sigʻmasa — avval kichraytiradi, keyin qisqa nomga oʻtadi, oxirida "…" bilan kesadi. */
     private fun fitText(t: String, maxW: Float, rowH: Float): String {
