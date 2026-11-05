@@ -12,6 +12,8 @@ class StyleTest {
             assertTrue(s.radius in 0..18)
             assertTrue(s.gap in 1..6)
             assertTrue(s.textScale in 80..130)
+            assertTrue(s.heightPct in 80..130)
+            assertTrue(s.vGapMul in 1f..3f)
             assertEquals(s.light == null, s.dark == null)
             s.light?.let { assertEquals(8, it.size) }
             s.dark?.let { assertEquals(8, it.size) }

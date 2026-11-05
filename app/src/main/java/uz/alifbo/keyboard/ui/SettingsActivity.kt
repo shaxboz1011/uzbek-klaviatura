@@ -53,6 +53,7 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        maybeOnboard()
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -134,7 +135,7 @@ class SettingsActivity : Activity() {
             setOnCheckedChangeListener { _, id ->
                 val st = Theme.STYLES[id - 2000]
                 if (st.id != prefs.stylePreset) {
-                    prefs.applyStylePreset(st.id, st.radius, st.gap, st.textScale, st.shadow)
+                    prefs.applyStylePreset(st.id, st.radius, st.gap, st.textScale, st.shadow, st.heightPct)
                     recreate() // slayderlar yangi qiymatlar bilan qayta chiziladi
                 }
             }
@@ -190,6 +191,7 @@ class SettingsActivity : Activity() {
         root.addView(section("Yozish"))
         switchRow(root, "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)", prefs.swipe) { prefs.swipe = it }
         switchRow(root, "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)", prefs.suggestions) { prefs.suggestions = it }
+        switchRow(root, "Keyingi soʻz bashorati (soʻzdan keyin odatda yozadigan soʻzlaringiz; faqat shu telefonda)", prefs.nextWord) { prefs.nextWord = it }
         switchRow(root, "Aralash tilda yozish: boshqa til soʻzlari ham tavsiya qilinadi (lotinda inglizcha, kirillda ruscha)", prefs.mixedLang) { prefs.mixedLang = it }
         switchRow(root, "Boʻsh maydonda oxirgi nusxalangan matnni tavsiya qilish", prefs.recentClipChip) { prefs.recentClipChip = it }
         switchRow(root, "Boʻsh maydonda oxirgi skrinshotni tavsiya qilish (rasmlarga kirish ruxsati kerak)", prefs.recentScreenshotChip) { on ->
@@ -234,6 +236,7 @@ class SettingsActivity : Activity() {
         root.addView(section("Maxfiylik va tozalash"))
         root.addView(button("Oʻrganilgan soʻzlarni oʻchirish") {
             Predictor.clear(this)
+            uz.alifbo.keyboard.data.Bigrams.clear(this)
             Toast.makeText(this, "Oʻchirildi", Toast.LENGTH_SHORT).show()
         })
         root.addView(button("Bufer tarixini oʻchirish") {
@@ -397,6 +400,16 @@ class SettingsActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    /** Birinchi marta ochilganda koʻrsatma sahifasi (klaviatura allaqachon yoqilgan va tanlangan boʻlsa — oʻtkazib yuboriladi). */
+    private fun maybeOnboard() {
+        if (prefs.onboarded) return
+        if (OnboardingActivity.isReady(this)) {
+            prefs.onboarded = true
+            return
+        }
+        startActivity(Intent(this, OnboardingActivity::class.java))
     }
 
     override fun onResume() {

@@ -168,15 +168,25 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("mixedLang", true)
         set(v) { sp.edit().putBoolean("mixedLang", v).apply() }
 
+    /** Keyingi soʻz bashorati: soʻz yozilgach, odatda undan keyin yozadigan soʻzlaringiz tavsiya qilinadi. */
+    var nextWord: Boolean
+        get() = sp.getBoolean("nextWord", true)
+        set(v) { sp.edit().putBoolean("nextWord", v).apply() }
+
+    /** Birinchi ishga tushirish ko'rsatmasi koʻrsatilganmi (yoki foydalanuvchi klaviaturani allaqachon yoqqanmi). */
+    var onboarded: Boolean
+        get() = sp.getBoolean("onboarded", false)
+        set(v) { sp.edit().putBoolean("onboarded", v).apply() }
+
     /** Tayyor uslub (0 — Samsung, 1 — iOS ga oʻxshash, 2 — Redmi ga oʻxshash). */
     var stylePreset: Int
         get() = sp.getInt("stylePreset", 0).coerceIn(0, 2)
         set(v) { sp.edit().putInt("stylePreset", v).apply() }
 
     /** Uslubni tanlaydi va uning tugma oʻlchamlarini sozlamalarga yozadi (keyin slayderlar bilan oʻzgartirsa boʻladi). */
-    fun applyStylePreset(id: Int, radius: Int, gap: Int, textScale: Int, shadow: Boolean) {
+    fun applyStylePreset(id: Int, radius: Int, gap: Int, textScale: Int, shadow: Boolean, heightPct: Int) {
         sp.edit().putInt("stylePreset", id).putInt("keyRadius", radius).putInt("keyGap", gap)
-            .putInt("textScale", textScale).putBoolean("keyShadow", shadow).apply()
+            .putInt("textScale", textScale).putBoolean("keyShadow", shadow).putInt("height", heightPct).apply()
     }
 
     /** Boʻsh maydonda eng oxirgi nusxalangan matnni tavsiya qilish. */

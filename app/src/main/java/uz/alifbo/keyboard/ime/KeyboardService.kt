@@ -17,6 +17,7 @@ import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import uz.alifbo.keyboard.data.Recents
 import uz.alifbo.keyboard.data.Autocorrect
+import uz.alifbo.keyboard.data.Bigrams
 import uz.alifbo.keyboard.data.ClipStore
 import uz.alifbo.keyboard.data.LayoutPack
 import uz.alifbo.keyboard.data.LexiconStore
@@ -76,6 +77,8 @@ class KeyboardService : InputMethodService(),
     private var suggestOn = true
     private var learnOn = true
     private var prevWord = ""
+    /** Oxirgi tugallangan soʻz (keyingi soʻz bashorati uchun); jumla tugasa yoki maydon almashsa boʻshaydi. */
+    private var lastWord = ""
 
     // Serverdan yangi alifbo kelganda klaviatura ochiq turgan bo'lsa ham darrov almashadi.
     private val storeListener: () -> Unit = { reloadPacks() }
@@ -134,6 +137,7 @@ class KeyboardService : InputMethodService(),
         PackStore.removeListener(storeListener)
         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).removePrimaryClipChangedListener(clipListener)
         Predictor.save(this)
+        Bigrams.save(this)
         super.onDestroy()
     }
 
@@ -179,6 +183,7 @@ class KeyboardService : InputMethodService(),
         suggestOn = prefs.suggestions && !secret
         learnOn = suggestOn && (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) == 0
         prevWord = ""
+        lastWord = ""
         swipeWord = null
         r.strip.setSuggestions(emptyList())
         refreshChips()
@@ -203,6 +208,7 @@ class KeyboardService : InputMethodService(),
 
     override fun onFinishInputView(finishingInput: Boolean) {
         Predictor.save(this)
+        Bigrams.save(this)
         super.onFinishInputView(finishingInput)
     }
 
@@ -292,9 +298,24 @@ class KeyboardService : InputMethodService(),
         val ic = currentInputConnection ?: return
         val before = ic.getTextBeforeCursor(40, 0) ?: ""
         val cur = trailingWord(before)
-        if (boundary && learnOn && prevWord.length >= 2) Predictor.learn(this, prevWord)
+        if (boundary && learnOn && prevWord.length >= 2) {
+            Predictor.learn(this, prevWord)
+            if (prefs.nextWord) {
+                if (lastWord.isNotEmpty()) Bigrams.learn(this, lastWord, prevWord)
+                lastWord = prevWord
+            }
+            // Jumla tugadi: keyingi jumla oldingi soʻzga bogʻlanmasin
+            if (before.trimEnd().lastOrNull() in setOf('.', '!', '?')) lastWord = ""
+        }
         prevWord = cur
-        r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3, currentLexicon(), currentExtras()))
+        r.strip.setSuggestions(
+            when {
+                cur.isNotEmpty() -> Predictor.suggest(this, cur, 3, currentLexicon(), currentExtras())
+                prefs.nextWord && lastWord.isNotEmpty() && before.lastOrNull()?.isWhitespace() == true ->
+                    Bigrams.next(this, lastWord, 3)
+                else -> emptyList()
+            }
+        )
     }
 
     // ---------------------------------------------------------------- "eng oxirgi" tavsiyalar
@@ -355,6 +376,8 @@ class KeyboardService : InputMethodService(),
         root?.strip?.setChips(chips)
     }
 
+    override fun onToolKey(id: Int) = onTool(id)
+
     override fun onChip(index: Int) {
         val a = chipActions.getOrNull(index) ?: return
         dismissedClip = chipClipText ?: dismissedClip
@@ -414,9 +437,18 @@ class KeyboardService : InputMethodService(),
         ic.commitText("$out ", 1)
         ic.endBatchEdit()
         if (learnOn) Predictor.learn(this, out)
+        rememberWord(out)
         prevWord = ""
-        root?.strip?.setSuggestions(emptyList())
         updateShift()
+        refreshSuggestions(false) // keyingi soʻz tavsiyalarini darrov koʻrsatadi
+    }
+
+    /** Tavsiya yoki surib yozish bilan kiritilgan soʻzni keyingi soʻz bashorati uchun eslab qoladi. */
+    private fun rememberWord(w: String) {
+        if (!learnOn || !prefs.nextWord) return
+        val k = w.lowercase()
+        if (lastWord.isNotEmpty()) Bigrams.learn(this, lastWord, k)
+        lastWord = k
     }
 
     // ---------------------------------------------------------------- asboblar qatori
@@ -676,6 +708,7 @@ class KeyboardService : InputMethodService(),
         val lead = if (!b.isNullOrEmpty() && (b[0].isLetterOrDigit() || b[0] in ".,!?:;)")) " " else ""
         ic.commitText("$lead$best ", 1)
         if (learnOn) Predictor.learn(this, best.lowercase())
+        rememberWord(best)
         updateShift()
         prevWord = ""
         swipeWord = best
