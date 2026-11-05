@@ -23,7 +23,7 @@ import java.io.FileOutputStream
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w360dp-h800dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "w360dp-h800dp-xxhdpi", application = Application::class)
 class KeyboardShotsTest {
 
     private fun render(name: String, styleId: Int, mode: Int, setup: (KeyboardRoot) -> Unit = {}) {
