@@ -144,7 +144,7 @@ class Prefs(context: Context) {
 
     /** Klaviatura balandligi, foizda (80..130). */
     var heightPercent: Int
-        get() = sp.getInt("height", 92).coerceIn(80, 130)
+        get() = sp.getInt("height", 86).coerceIn(80, 130)
         set(v) {
             sp.edit().putInt("height", v).apply()
         }
@@ -219,7 +219,7 @@ class Prefs(context: Context) {
 
     /** Tugma burchaklari radiusi, dp (0..18). */
     var keyRadius: Int
-        get() = sp.getInt("keyRadius", 10).coerceIn(0, 18)
+        get() = sp.getInt("keyRadius", 7).coerceIn(0, 18)
         set(v) { sp.edit().putInt("keyRadius", v).apply() }
 
     /** Tugmalar orasidagi masofa (har tomondan), dp x2 (1..6). */
@@ -229,7 +229,7 @@ class Prefs(context: Context) {
 
     /** Harf oʻlchami, foizda (80..130). */
     var textScale: Int
-        get() = sp.getInt("textScale", 100).coerceIn(80, 130)
+        get() = sp.getInt("textScale", 108).coerceIn(80, 130)
         set(v) { sp.edit().putInt("textScale", v).apply() }
 
     /** Tugma ostidagi soya. */

@@ -63,6 +63,8 @@ class StripView(context: Context) : View(context) {
     private var colAccent = 0
     private var colChip = 0
     private var badges = 0
+    /** iOS ga oʻxshash uslubda asboblar doirasiz (yassi) va qator pastroq. */
+    private var flatTools = false
 
     init {
         reloadColors()
@@ -78,6 +80,11 @@ class StripView(context: Context) : View(context) {
         colPressed = Theme.col(context, R.color.kb_key_pressed)
         colAccent = Theme.accent(context)
         colChip = Theme.col(context, R.color.kb_chip)
+        val flat = Theme.style(context).ios
+        if (flat != flatTools) {
+            flatTools = flat
+            requestLayout()
+        }
         invalidate()
     }
 
@@ -119,7 +126,7 @@ class StripView(context: Context) : View(context) {
     private fun chipMode() = suggestions.isEmpty() && chips.isNotEmpty()
 
     override fun onMeasure(widthSpec: Int, heightSpec: Int) {
-        setMeasuredDimension(MeasureSpec.getSize(widthSpec), (48 * density).toInt())
+        setMeasuredDimension(MeasureSpec.getSize(widthSpec), ((if (flatTools) 44 else 48) * density).toInt())
     }
 
     private fun cellCount() = when {
@@ -189,10 +196,17 @@ class StripView(context: Context) : View(context) {
         val r = minOf(cw / 2f - 7 * density, height * 0.36f)
         for (i in 0 until n) {
             val cx = i * cw + cw / 2f
-            paint.style = Paint.Style.FILL
-            paint.color = if (pressed == i) colPressed else colChip
-            c.drawCircle(cx, cy, r, paint)
-            drawTool(c, tools[i], cx, cy, r * 0.5f)
+            // Samsung: «…» doirasiz; iOS uslubida hamma asbob doirasiz
+            if (!flatTools && tools[i] != MORE) {
+                paint.style = Paint.Style.FILL
+                paint.color = if (pressed == i) colPressed else colChip
+                c.drawCircle(cx, cy, r, paint)
+            } else if (pressed == i) {
+                paint.style = Paint.Style.FILL
+                paint.color = colPressed
+                c.drawCircle(cx, cy, r, paint)
+            }
+            drawTool(c, tools[i], cx, cy, if (flatTools) 9f * density else r * 0.5f)
             if (badges and (1 shl tools[i]) != 0) {
                 paint.style = Paint.Style.FILL
                 paint.color = 0xFFFF6A00.toInt()
