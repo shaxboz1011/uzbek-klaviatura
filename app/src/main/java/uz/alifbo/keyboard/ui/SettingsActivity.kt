@@ -190,6 +190,7 @@ class SettingsActivity : Activity() {
         root.addView(section("Yozish"))
         switchRow(root, "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)", prefs.swipe) { prefs.swipe = it }
         switchRow(root, "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)", prefs.suggestions) { prefs.suggestions = it }
+        switchRow(root, "Aralash tilda yozish: boshqa til soʻzlari ham tavsiya qilinadi (lotinda inglizcha, kirillda ruscha)", prefs.mixedLang) { prefs.mixedLang = it }
         switchRow(root, "Boʻsh maydonda oxirgi nusxalangan matnni tavsiya qilish", prefs.recentClipChip) { prefs.recentClipChip = it }
         switchRow(root, "Boʻsh maydonda oxirgi skrinshotni tavsiya qilish (rasmlarga kirish ruxsati kerak)", prefs.recentScreenshotChip) { on ->
             prefs.recentScreenshotChip = on

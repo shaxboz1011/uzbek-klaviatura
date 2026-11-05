@@ -51,7 +51,7 @@ class KeyboardService : InputMethodService(),
     private val liveKeys = setOf(
         "keyRadius", "keyGap", "textScale", "keyShadow", "bottomPad", "hapticMs", "longPressMs", "cursorStep",
         "autoCap", "toolsMask", "theme", "accent", "height", "soundVol", "sound", "haptic", "keyPreview",
-        "numberRow", "swipe", "oneHanded", "stylePreset"
+        "numberRow", "swipe", "oneHanded", "stylePreset", "mixedLang"
     )
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in liveKeys) applyLive()
@@ -61,6 +61,7 @@ class KeyboardService : InputMethodService(),
     private fun applyLive() {
         if (root != null && builtTheme != themeSig()) setInputView(onCreateInputView())
         val r = root ?: return
+        if (prefs.mixedLang) (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.let { LexiconStore.loadExtrasAsync(this, it) {} }
         r.reloadColors()
         r.strip.setToolsMask(prefs.toolsMask)
         val v = r.keyboard
@@ -237,9 +238,17 @@ class KeyboardService : InputMethodService(),
     private fun currentLexicon() =
         (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.let { LexiconStore.get(it) }
 
+    /** Aralash tilda yozish yoqilgan boʻlsa, joriy alifbo bilan birga tavsiya beriladigan boshqa til lugʻatlari. */
+    private fun currentExtras(): List<uz.alifbo.keyboard.data.Lexicon> {
+        if (!prefs.mixedLang) return emptyList()
+        val p = packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull() ?: return emptyList()
+        return LexiconStore.extras(p)
+    }
+
     private fun applyPack(p: LayoutPack) {
         root?.keyboard?.setPack(p)
         LexiconStore.loadAsync(this, p) {}
+        if (prefs.mixedLang) LexiconStore.loadExtrasAsync(this, p) {}
     }
 
     private fun enterLabelFor(info: EditorInfo): String? {
@@ -285,7 +294,7 @@ class KeyboardService : InputMethodService(),
         val cur = trailingWord(before)
         if (boundary && learnOn && prevWord.length >= 2) Predictor.learn(this, prevWord)
         prevWord = cur
-        r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3, currentLexicon()))
+        r.strip.setSuggestions(if (cur.isEmpty()) emptyList() else Predictor.suggest(this, cur, 3, currentLexicon(), currentExtras()))
     }
 
     // ---------------------------------------------------------------- "eng oxirgi" tavsiyalar
@@ -649,7 +658,8 @@ class KeyboardService : InputMethodService(),
         if (cur.isEmpty()) return false
         val lex = currentLexicon() ?: return false
         val known = Predictor.snapshot(this)
-        val fixed = Autocorrect.correct(cur, lex) { it in known } ?: return false
+        val extras = currentExtras()
+        val fixed = Autocorrect.correct(cur, lex) { it in known || extras.any { x -> x.contains(it) } } ?: return false
         val out = Autocorrect.matchCase(cur, fixed)
         ic.beginBatchEdit()
         ic.deleteSurroundingText(cur.length, 0)

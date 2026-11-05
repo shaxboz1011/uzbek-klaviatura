@@ -163,6 +163,11 @@ class Prefs(context: Context) {
             sp.edit().putInt("oneHanded", v).apply()
         }
 
+    /** Aralash tilda yozish: boshqa til (lotinda inglizcha, kirillda ruscha) soʻzlari ham tavsiya qilinadi, avto-tuzatish ularga tegmaydi. */
+    var mixedLang: Boolean
+        get() = sp.getBoolean("mixedLang", true)
+        set(v) { sp.edit().putBoolean("mixedLang", v).apply() }
+
     /** Tayyor uslub (0 — Samsung, 1 — iOS ga oʻxshash, 2 — Redmi ga oʻxshash). */
     var stylePreset: Int
         get() = sp.getInt("stylePreset", 0).coerceIn(0, 2)
