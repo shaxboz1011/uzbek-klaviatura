@@ -33,10 +33,10 @@ object Theme {
     )
 
     val STYLES: List<Style> = listOf(
-        Style(0, "Samsung", 10, 3, 100, true, false, 0, 92, 1.7f, false, null, null),
+        Style(0, "Samsung", 7, 3, 108, true, false, 0, 86, 2f, false, null, null),
         // Yumaloq, yirik harfli, tugma ostida soya va tomchi popup (iOS ga oʻxshash; ikonka va shriftlar nusxalanmaydi)
         Style(
-            1, "Yumaloq (iOS ga oʻxshash)", 5, 3, 112, true, true, 0xFF0A84FF.toInt(), 108, 2f, true,
+            1, "Yumaloq (iOS ga oʻxshash)", 4, 3, 112, true, true, 0xFF0A84FF.toInt(), 92, 1.5f, true,
             intArrayOf(0xFFD3D5DB.toInt(), 0xFFFFFFFF.toInt(), 0xFFADB1BB.toInt(), 0xFFC2C5CD.toInt(), 0xFF000000.toInt(), 0xFF6B6F76.toInt(), 0xFFFFFFFF.toInt(), 0xFF8A8C90.toInt()),
             intArrayOf(0xFF212224.toInt(), 0xFF66676A.toInt(), 0xFF3F4043.toInt(), 0xFF808185.toInt(), 0xFFFFFFFF.toInt(), 0xFFA0A0A5.toInt(), 0xFF7A7B7F.toInt(), 0xFF0B0B0C.toInt())
         ),
