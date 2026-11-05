@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # ci-screenshots branchiga rasmlarni yuklash uchun
     steps:
       - uses: actions/checkout@v4
 
@@ -77,6 +79,21 @@ jobs:
           name: keyboard-screenshots
           path: app/build/screenshots/*.png
           if-no-files-found: ignore
+
+      # Rasmlarni ko'rish oson bo'lishi uchun alohida branch (har safar qayta yoziladi; main ga aralashmaydi)
+      - name: Publish screenshots to ci-screenshots branch
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          if ls app/build/screenshots/*.png >/dev/null 2>&1; then
+            d=$(mktemp -d)
+            cp app/build/screenshots/*.png "$d"/
+            cd "$d"
+            git init -q
+            git checkout -q -b ci-screenshots
+            git add .
+            git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "screenshots for $GITHUB_SHA"
+            git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-screenshots
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
