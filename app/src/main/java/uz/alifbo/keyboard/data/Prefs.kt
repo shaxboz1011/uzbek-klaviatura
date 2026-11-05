@@ -163,6 +163,17 @@ class Prefs(context: Context) {
             sp.edit().putInt("oneHanded", v).apply()
         }
 
+    /** Tayyor uslub (0 — Samsung, 1 — iOS ga oʻxshash, 2 — Redmi ga oʻxshash). */
+    var stylePreset: Int
+        get() = sp.getInt("stylePreset", 0).coerceIn(0, 2)
+        set(v) { sp.edit().putInt("stylePreset", v).apply() }
+
+    /** Uslubni tanlaydi va uning tugma oʻlchamlarini sozlamalarga yozadi (keyin slayderlar bilan oʻzgartirsa boʻladi). */
+    fun applyStylePreset(id: Int, radius: Int, gap: Int, textScale: Int, shadow: Boolean) {
+        sp.edit().putInt("stylePreset", id).putInt("keyRadius", radius).putInt("keyGap", gap)
+            .putInt("textScale", textScale).putBoolean("keyShadow", shadow).apply()
+    }
+
     /** Boʻsh maydonda eng oxirgi nusxalangan matnni tavsiya qilish. */
     var recentClipChip: Boolean
         get() = sp.getBoolean("recentClipChip", true)
@@ -247,7 +258,7 @@ class Prefs(context: Context) {
     /** Barcha koʻrinish/xatti-harakat sozlamalarini standartga qaytaradi (tillar va oʻrganilgan soʻzlarga tegmaydi). */
     fun resetStyle() {
         sp.edit()
-            .remove("keyRadius").remove("keyGap").remove("textScale").remove("keyShadow").remove("bottomPad")
+            .remove("stylePreset").remove("keyRadius").remove("keyGap").remove("textScale").remove("keyShadow").remove("bottomPad")
             .remove("scanTool").remove("hapticMs").remove("longPressMs").remove("cursorStep").remove("autoCap").remove("toolsMask")
             .remove("theme").remove("accent").remove("height").remove("soundVol")
             .apply()

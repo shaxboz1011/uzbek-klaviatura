@@ -114,6 +114,7 @@ class KeyboardView(context: Context) : View(context) {
     private var colAccent = 0
     private var colPopup = 0
     private var colShadow = 0
+    private var balloon = false
 
     private var longPressMs = ViewConfiguration.getLongPressTimeout().toLong()
 
@@ -148,15 +149,16 @@ class KeyboardView(context: Context) : View(context) {
     private fun dp(v: Float) = v * density
 
     fun reloadColors() {
-        colBg = context.getColor(R.color.kb_bg)
-        colKey = context.getColor(R.color.kb_key)
-        colSpecial = context.getColor(R.color.kb_key_special)
-        colPressed = context.getColor(R.color.kb_key_pressed)
-        colText = context.getColor(R.color.kb_text)
-        colHint = context.getColor(R.color.kb_hint)
+        colBg = Theme.col(context, R.color.kb_bg)
+        colKey = Theme.col(context, R.color.kb_key)
+        colSpecial = Theme.col(context, R.color.kb_key_special)
+        colPressed = Theme.col(context, R.color.kb_key_pressed)
+        colText = Theme.col(context, R.color.kb_text)
+        colHint = Theme.col(context, R.color.kb_hint)
         colAccent = Theme.accent(context)
-        colPopup = context.getColor(R.color.kb_popup)
-        colShadow = context.getColor(R.color.kb_key_shadow)
+        colPopup = Theme.col(context, R.color.kb_popup)
+        colShadow = Theme.col(context, R.color.kb_key_shadow)
+        balloon = Theme.style(context).balloon
         invalidate()
     }
 
@@ -470,13 +472,28 @@ class KeyboardView(context: Context) : View(context) {
                 if (p.alts != null || p.swipe || k.spec.isToken || k.row == 0) continue
                 val t = if (shift != 0 && !symbols) k.spec.label.uppercase(caseLocale) else k.spec.label
                 val r = k.rect
-                val bw = maxOf(r.width(), dp(48f))
-                val bh = r.height() * 1.1f
+                val bw = if (balloon) maxOf(r.width() * 1.5f, dp(54f)) else maxOf(r.width(), dp(48f))
+                val bh = if (balloon) r.height() * 1.25f else r.height() * 1.1f
                 val left = (r.centerX() - bw / 2f).coerceIn(0f, width - bw)
-                val top = r.top - bh - dp(2f)
+                val top = r.top - bh - (if (balloon) dp(8f) else dp(2f))
                 tmp.set(left, top, left + bw, top + bh)
                 paintKey.color = colPopup
-                c.drawRoundRect(tmp, radius, radius, paintKey)
+                if (balloon) {
+                    // Tomchi: pufak + tugmaga ulovchi boʻyin
+                    val br = maxOf(radius * 1.6f, dp(10f))
+                    c.drawRoundRect(tmp, br, br, paintKey)
+                    path.reset()
+                    val nl = (left + bw / 2f - r.width() / 2f).coerceAtLeast(left + br)
+                    val nr = (left + bw / 2f + r.width() / 2f).coerceAtMost(left + bw - br)
+                    path.moveTo(nl, tmp.bottom - dp(2f))
+                    path.lineTo(nr, tmp.bottom - dp(2f))
+                    path.lineTo(r.right, r.top + radius)
+                    path.lineTo(r.left, r.top + radius)
+                    path.close()
+                    c.drawPath(path, paintKey)
+                } else {
+                    c.drawRoundRect(tmp, radius, radius, paintKey)
+                }
                 paintText.color = colText
                 paintText.textSize = bh * 0.5f
                 drawCentered(c, t, tmp.centerX(), tmp.centerY(), paintText)

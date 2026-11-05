@@ -50,7 +50,7 @@ class EmojiPanel(context: Context) : LinearLayout(context) {
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(context.getColor(R.color.kb_bg))
+        setBackgroundColor(Theme.col(context, R.color.kb_bg))
 
         grid.numColumns = GridView.AUTO_FIT
         grid.columnWidth = dp(44)
@@ -82,7 +82,7 @@ class EmojiPanel(context: Context) : LinearLayout(context) {
         text = t
         textSize = size
         gravity = Gravity.CENTER
-        setTextColor(context.getColor(R.color.kb_text))
+        setTextColor(Theme.col(context, R.color.kb_text))
         setOnClickListener { onClick() }
     }
 

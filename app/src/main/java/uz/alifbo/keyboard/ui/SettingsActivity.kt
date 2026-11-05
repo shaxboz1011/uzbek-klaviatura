@@ -121,6 +121,24 @@ class SettingsActivity : Activity() {
 
         // ---- Koʻrinish ----
         root.addView(section("Koʻrinish"))
+        root.addView(body("Uslub (tugma shakli va ranglari; keyin pastdagi sozlamalar bilan oʻzgartirsa boʻladi)"))
+        root.addView(RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+            for (st in Theme.STYLES) {
+                addView(RadioButton(context).apply {
+                    id = 2000 + st.id
+                    text = st.name
+                })
+            }
+            check(2000 + prefs.stylePreset)
+            setOnCheckedChangeListener { _, id ->
+                val st = Theme.STYLES[id - 2000]
+                if (st.id != prefs.stylePreset) {
+                    prefs.applyStylePreset(st.id, st.radius, st.gap, st.textScale, st.shadow)
+                    recreate() // slayderlar yangi qiymatlar bilan qayta chiziladi
+                }
+            }
+        })
         root.addView(body("Mavzu"))
         root.addView(RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL

@@ -51,7 +51,7 @@ class KeyboardService : InputMethodService(),
     private val liveKeys = setOf(
         "keyRadius", "keyGap", "textScale", "keyShadow", "bottomPad", "hapticMs", "longPressMs", "cursorStep",
         "autoCap", "toolsMask", "theme", "accent", "height", "soundVol", "sound", "haptic", "keyPreview",
-        "numberRow", "swipe", "oneHanded"
+        "numberRow", "swipe", "oneHanded", "stylePreset"
     )
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key in liveKeys) applyLive()
@@ -152,7 +152,7 @@ class KeyboardService : InputMethodService(),
         return r
     }
 
-    private fun themeSig() = "${prefs.theme}/${prefs.accent}"
+    private fun themeSig() = "${prefs.theme}/${prefs.accent}/${prefs.stylePreset}"
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 
