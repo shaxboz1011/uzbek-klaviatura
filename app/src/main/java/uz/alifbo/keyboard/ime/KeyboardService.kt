@@ -34,7 +34,7 @@ import uz.alifbo.keyboard.ui.VoiceBridge
 
 class KeyboardService : InputMethodService(),
     KeyboardView.Listener, StripView.Listener, EmojiPanel.Listener, ClipPanel.Listener,
-    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener, EditPanel.Listener {
+    MorePanel.Listener, TranslatePanel.Listener, ConvertPanel.Listener, EditPanel.Listener, QuickPanel.Listener {
 
     private var root: KeyboardRoot? = null
     private lateinit var prefs: Prefs
@@ -151,6 +151,7 @@ class KeyboardService : InputMethodService(),
         r.keyboard.learnedWords = { if (learnOn) Predictor.snapshot(this) else emptyMap() }
         r.strip.listener = this
         r.edit.listener = this
+        r.quick.listener = this
         r.emoji.listener = this
         r.clip.listener = this
         r.more.listener = this
@@ -388,6 +389,39 @@ class KeyboardService : InputMethodService(),
 
     override fun onToolKey(id: Int) = onTool(id)
 
+    // ---------------------------------------------------------------- tezkor amallar paneli
+
+    override fun onQuickText(text: String) {
+        currentInputConnection?.commitText(text, 1)
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+        refreshSuggestions(false)
+        updateShift()
+    }
+
+    /** Belgilangan matnni (yoʻq boʻlsa — maydondagi hamma matnni) oʻzgartiradi. */
+    override fun onQuickTransform(kind: Int) {
+        val ic = currentInputConnection ?: return
+        val loc = (packs.firstOrNull { it.id == prefs.currentId } ?: packs.firstOrNull())?.locale ?: java.util.Locale.getDefault()
+        val sel = ic.getSelectedText(0)?.toString()
+        if (!sel.isNullOrEmpty()) {
+            ic.commitText(uz.alifbo.keyboard.data.TextTransforms.apply(kind, sel, loc), 1)
+        } else {
+            val before = ic.getTextBeforeCursor(10000, 0)?.toString() ?: ""
+            val after = ic.getTextAfterCursor(10000, 0)?.toString() ?: ""
+            if (before.isEmpty() && after.isEmpty()) {
+                Toast.makeText(this, "Matn yoʻq", Toast.LENGTH_SHORT).show()
+                return
+            }
+            ic.beginBatchEdit()
+            ic.deleteSurroundingText(before.length, after.length)
+            ic.commitText(uz.alifbo.keyboard.data.TextTransforms.apply(kind, before + after, loc), 1)
+            ic.endBatchEdit()
+        }
+        root?.showPanel(KeyboardRoot.KEYBOARD)
+        refreshSuggestions(false)
+        updateShift()
+    }
+
     // ---------------------------------------------------------------- matn tahrirlash paneli
 
     override fun onEditKey(keyCode: Int, ctrl: Boolean, shift: Boolean) {
@@ -615,6 +649,11 @@ class KeyboardService : InputMethodService(),
                 r.keyboard.setSoundVolume(prefs.soundVolume)
                 if (prefs.sound) r.keyboard.previewClick()
                 r.more.show(prefs.oneHanded, prefs.theme, prefs.sound)
+                return
+            }
+            MorePanel.QUICK -> {
+                r.quick.show()
+                r.showPanel(KeyboardRoot.QUICK)
                 return
             }
             MorePanel.CONVERT -> {

@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import uz.alifbo.keyboard.R
+import uz.alifbo.keyboard.data.ClipKinds
 import uz.alifbo.keyboard.data.ClipStore
 
 class ClipPanel(context: Context) : LinearLayout(context) {
@@ -27,6 +28,10 @@ class ClipPanel(context: Context) : LinearLayout(context) {
     private fun dp(v: Int) = (v * density).toInt()
 
     private val list = LinearLayout(context).apply { orientation = VERTICAL }
+    private var all: List<ClipStore.Item> = emptyList()
+    private var access = true
+    private var kind = ClipKinds.ALL
+    private val tabs = LinearLayout(context).apply { orientation = HORIZONTAL }
 
     init {
         orientation = VERTICAL
@@ -46,6 +51,20 @@ class ClipPanel(context: Context) : LinearLayout(context) {
         header.addView(btn("Tozalash") { listener?.onClearClips() }, LayoutParams(WRAP_CONTENT, dp(44)))
         addView(header, LayoutParams(MATCH_PARENT, dp(44)))
 
+        for ((k, name) in listOf(ClipKinds.ALL to "Hammasi", ClipKinds.LINK to "Havola", ClipKinds.NUMBER to "Raqam", ClipKinds.PINNED to "Qadalgan")) {
+            tabs.addView(TextView(context).apply {
+                text = name
+                textSize = 13f
+                gravity = Gravity.CENTER
+                tag = k
+                setOnClickListener {
+                    kind = k
+                    render()
+                }
+            }, LayoutParams(0, dp(34), 1f).apply { setMargins(dp(4), 0, dp(4), dp(4)) })
+        }
+        addView(tabs, LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { setMargins(dp(4), 0, dp(4), 0) })
+
         val sv = ScrollView(context)
         sv.addView(list)
         addView(sv, LayoutParams(MATCH_PARENT, 0, 1f))
@@ -61,7 +80,32 @@ class ClipPanel(context: Context) : LinearLayout(context) {
     }
 
     fun show(items: List<ClipStore.Item>, access: Boolean = true) {
+        all = items
+        this.access = access
+        render()
+    }
+
+    private fun render() {
+        for (i in 0 until tabs.childCount) {
+            val t = tabs.getChildAt(i) as TextView
+            val on = t.tag == kind
+            t.setTextColor(if (on) 0xFFFFFFFF.toInt() else Theme.col(context, R.color.kb_text))
+            t.background = GradientDrawable().apply {
+                setColor(if (on) Theme.accent(context) else Theme.col(context, R.color.kb_key))
+                cornerRadius = dp(17).toFloat()
+            }
+        }
+        val items = all.filter { ClipKinds.matches(kind, it) }
         list.removeAllViews()
+        if (items.isEmpty() && all.isNotEmpty()) {
+            list.addView(TextView(context).apply {
+                text = "Bu turda yozuv yoʻq."
+                textSize = 14f
+                setTextColor(Theme.col(context, R.color.kb_hint))
+                setPadding(dp(16), dp(24), dp(16), dp(16))
+            })
+            return
+        }
         if (items.isEmpty()) {
             list.addView(TextView(context).apply {
                 text = if (access) {
