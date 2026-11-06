@@ -178,6 +178,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("onboarded", false)
         set(v) { sp.edit().putBoolean("onboarded", v).apply() }
 
+    /** Matn qisqartmalari: qisqartma yozilib boʻsh joy bosilsa, toʻliq matn chiqadi. */
+    var shortcuts: Boolean
+        get() = sp.getBoolean("shortcuts", true)
+        set(v) { sp.edit().putBoolean("shortcuts", v).apply() }
+
     /** Tayyor uslub (0 — Samsung, 1 — iOS ga oʻxshash, 2 — Redmi ga oʻxshash). */
     var stylePreset: Int
         get() = sp.getInt("stylePreset", 0).coerceIn(0, 2)

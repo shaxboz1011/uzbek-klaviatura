@@ -25,6 +25,8 @@ import uz.alifbo.keyboard.data.PackStore
 import uz.alifbo.keyboard.data.Predictor
 import uz.alifbo.keyboard.data.Prefs
 import uz.alifbo.keyboard.data.RemoteSync
+import uz.alifbo.keyboard.data.ShortcutLogic
+import uz.alifbo.keyboard.data.Shortcuts
 import uz.alifbo.keyboard.ui.ScanActivity
 import uz.alifbo.keyboard.ui.SettingsActivity
 import uz.alifbo.keyboard.ui.VoiceActivity
@@ -45,7 +47,7 @@ class KeyboardService : InputMethodService(),
     private var swipeAllowed = true
 
     /** Oxirgi avto-tuzatish: orqaga (⌫) bosilsa asl soʻz tiklanadi. */
-    private class Fix(val original: String, val fixed: String, val sep: String)
+    private class Fix(val original: String, val fixed: String, val sep: String, val relearn: Boolean = true)
     private var lastFix: Fix? = null
 
     // Sozlamalar oʻzgarsa, klaviatura yopilmasdan darrov qoʻllanadi (Sozlamalar ichida sinab koʻrish uchun).
@@ -312,7 +314,13 @@ class KeyboardService : InputMethodService(),
         prevWord = cur
         r.strip.setSuggestions(
             when {
-                cur.isNotEmpty() -> Predictor.suggest(this, cur, 3, currentLexicon(), currentExtras())
+                cur.isNotEmpty() -> {
+                    val base = Predictor.suggest(this, cur, 3, currentLexicon(), currentExtras())
+                    // Qisqartma yozilgan boʻlsa, uning matni birinchi tavsiya (qisqa boʻlsa; uzun matn boʻsh joy bosilganda chiqadi)
+                    val sc = if (prefs.shortcuts) Shortcuts.find(this, cur) else null
+                    val ex = sc?.let { ShortcutLogic.applyCase(cur, ShortcutLogic.expandVars(it.text, java.util.Calendar.getInstance())) }
+                    if (ex != null && ex.length <= 22 && '\n' !in ex) (listOf(ex) + base.filter { it != ex }).take(3) else base
+                }
                 prefs.nextWord && lastWord.isNotEmpty() && before.lastOrNull()?.isWhitespace() == true ->
                     Bigrams.next(this, lastWord, 3)
                 else -> emptyList()
@@ -715,6 +723,24 @@ class KeyboardService : InputMethodService(),
         root?.keyboard?.setOneHanded(0)
     }
 
+    /** Qisqartma ("mnm") yozilib ajratuvchi bosilsa, toʻliq matnga almashtiradi; ⌫ — qisqartmani qaytaradi. true — matn yozildi. */
+    private fun expandShortcut(ic: android.view.inputmethod.InputConnection, sep: String): Boolean {
+        if (!prefs.shortcuts || secretField) return false
+        if (sep.length != 1 || !(sep[0].isWhitespace() || sep[0] in ".,!?;:)")) return false
+        val before = ic.getTextBeforeCursor(40, 0) ?: return false
+        val cur = trailingWord(before)
+        if (cur.isEmpty()) return false
+        val sc = Shortcuts.find(this, cur) ?: return false
+        val out = ShortcutLogic.applyCase(cur, ShortcutLogic.expandVars(sc.text, java.util.Calendar.getInstance()))
+        lastFix = null
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(cur.length, 0)
+        ic.commitText(out + sep, 1)
+        ic.endBatchEdit()
+        lastFix = Fix(cur, out, sep, relearn = false)
+        return true
+    }
+
     /** Ajratuvchi (boʻsh joy/tinish belgisi) yozilganda, tugagan soʻzni kerak boʻlsa tuzatadi. true — matn yozildi. */
     private fun autocorrect(ic: android.view.inputmethod.InputConnection, sep: String): Boolean {
         lastFix = null
@@ -767,7 +793,7 @@ class KeyboardService : InputMethodService(),
                 return
             }
         }
-        if (ic != null && autocorrect(ic, text)) {
+        if (ic != null && (expandShortcut(ic, text) || autocorrect(ic, text))) {
             refreshSuggestions(true)
             updateShift()
             return
@@ -791,7 +817,7 @@ class KeyboardService : InputMethodService(),
                 ic.deleteSurroundingText(fx.fixed.length + fx.sep.length, 0)
                 ic.commitText(fx.original, 1)
                 ic.endBatchEdit()
-                Predictor.learn(this, fx.original)
+                if (fx.relearn) Predictor.learn(this, fx.original)
                 refreshSuggestions(false)
                 updateShift()
                 return

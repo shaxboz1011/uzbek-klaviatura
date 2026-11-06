@@ -191,6 +191,8 @@ class SettingsActivity : Activity() {
         root.addView(section("Yozish"))
         switchRow(root, "Surib yozish (harflar ustidan barmoqni surib soʻz yozish)", prefs.swipe) { prefs.swipe = it }
         switchRow(root, "Soʻz tavsiyalari (yozgan soʻzlaringizdan oʻrganadi, faqat shu telefonda)", prefs.suggestions) { prefs.suggestions = it }
+        switchRow(root, "Matn qisqartmalari (qisqartma + boʻsh joy = toʻliq matn)", prefs.shortcuts) { prefs.shortcuts = it }
+        root.addView(button("Matn qisqartmalarini boshqarish") { startActivity(Intent(this, ShortcutsActivity::class.java)) })
         switchRow(root, "Keyingi soʻz bashorati (soʻzdan keyin odatda yozadigan soʻzlaringiz; faqat shu telefonda)", prefs.nextWord) { prefs.nextWord = it }
         switchRow(root, "Aralash tilda yozish: boshqa til soʻzlari ham tavsiya qilinadi (lotinda inglizcha, kirillda ruscha)", prefs.mixedLang) { prefs.mixedLang = it }
         switchRow(root, "Boʻsh maydonda oxirgi nusxalangan matnni tavsiya qilish", prefs.recentClipChip) { prefs.recentClipChip = it }

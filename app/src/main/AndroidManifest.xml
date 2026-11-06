@@ -36,6 +36,10 @@
         </activity>
 
         <activity
+            android:name=".ui.ShortcutsActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.OnboardingActivity"
             android:exported="false" />
 
